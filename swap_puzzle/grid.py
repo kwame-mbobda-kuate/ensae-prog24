@@ -2,8 +2,6 @@
 This is the grid module. It contains the Grid class and its associated methods.
 """
 
-import random
-
 class Grid():
     """
     A class representing the grid from the swap puzzle. It supports rectangular grids. 
@@ -57,8 +55,13 @@ class Grid():
         """
         Checks is the current state of the grid is sorte and returns the answer as a boolean.
         """
-        # TODO: implement this function (and remove the line "raise NotImplementedError").
-        raise NotImplementedError
+        k = 1
+        for i in range(self.m):
+            for j in range(self.n):
+                if self.state[i][j] != k:
+                    return False
+                k += 1
+        return True
 
     def swap(self, cell1, cell2):
         """
@@ -69,8 +72,12 @@ class Grid():
         cell1, cell2: tuple[int]
             The two cells to swap. They must be in the format (i, j) where i is the line and j the column number of the cell. 
         """
-        # TODO: implement this function (and remove the line "raise NotImplementedError").
-        raise NotImplementedError
+        if ((cell1[0] == cell2[0] and abs(cell1[1] - cell2[1]) == 1 and not (cell1[1] == self.n and cell2[1] == 0) and not (cell2[1] == 0 and cell2[1] == self.n)) or \
+            (cell2[1] == cell2[1] and abs(cell1[0] - cell2[0]) == 1 and not (cell1[0] == self.m and cell2[0] == 0) and not (cell2[0] == 0 and cell2[0] == self.m))) and \
+                0 <= cell1[0] < self.m and 0 <= cell1[1] < self.n and 0 <= cell2[0] < self.m and 0 <= cell2[1] < self.n:
+            self.state[cell1[0]][cell1[1]], self.state[cell2[0]][cell2[1]] = self.state[cell2[0]][cell2[1]], self.state[cell1[0]][cell1[1]]
+        else:
+            raise Exception("Swap not allowed")
 
     def swap_seq(self, cell_pair_list):
         """
@@ -82,8 +89,34 @@ class Grid():
             List of swaps, each swap being a tuple of two cells (each cell being a tuple of integers). 
             So the format should be [((i1, j1), (i2, j2)), ((i1', j1'), (i2', j2')), ...].
         """
-        # TODO: implement this function (and remove the line "raise NotImplementedError").
-        raise NotImplementedError
+        for cell_pair in cell_pair_list:
+            self.swap(*cell_pair)
+
+    def allowed_swaps(self, cell):
+        """
+        Returns the swaps allowed from the cell given. 
+
+        Parameters: 
+        -----------
+        cell: tuple[int]
+            The cells from which the swaps will be done. It must be in the format (i, j) where i is the line and j the column number of the cell.
+        
+        Output:
+        -------
+        swaps: list[tuple[int]]
+             The swaps allowed from the cell given. 
+        """
+        i, j = cell
+        swaps = []
+        if i > 0:
+            swaps.append((i-1, j))
+        if i < self.n - 1:
+            swaps.append((i+1, j))
+        if j > 0:
+            swaps.append((i, j-1))
+        if j < self.m - 1:
+            swaps.append((i, j+1))
+        return swaps
 
     @classmethod
     def grid_from_file(cls, file_name): 
@@ -113,4 +146,29 @@ class Grid():
             grid = Grid(m, n, initial_state)
         return grid
 
+    
+    def to_tuple(self):
+        L = [self.m, self.n]
+        for i in range(self.m):
+            for j in range(self.n):
+                L.append(self.state[i][j])
+        return tuple(L)
+    
+    @classmethod
+    def grid_from_tuple(tup):
+        grid = Grid(tup[0], tup[1])
+        for i in range(grid.m):
+            for j in range(grid.n):
+                grid.state[i][j] = tup[i * grid.n + j + 2]
+        return grid
 
+    def all_swaps(self):
+        swaps = []
+        #On n'ajoute que les échanges avec des cases situées à droite ou en bas
+        for i in range(self.m):
+            for j in range(self.n):
+                if i < self.m - 1:
+                    swaps.append([(i, j), (i+1, j)])
+                if j < self.n - 1:
+                    swaps.append([(i, j), (i, j + 1)])
+        return swaps

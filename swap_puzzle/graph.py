@@ -1,3 +1,5 @@
+import collections
+
 """
 This is the graph module. It contains a minimalistic Graph class.
 """
@@ -96,9 +98,22 @@ class Graph:
         -------
         path: list[NodeType] | None
             The shortest path from src to dst. Returns None if dst is not reachable from src
-        """ 
-        # TODO: implement this function (and remove the line "raise NotImplementedError").
-        raise NotImplementedError
+        """
+        seen = set([src])
+        L = collections.deque([(src, [])])
+        node = None
+        while L and (node is None or node[0] != dst):
+            node = L.pop()
+            for neigh in self.graph[node[0]]:
+                path = node[1] + [node[0]]
+                if neigh not in seen:
+                    L.appendleft((neigh, path))
+                    seen.add(neigh)
+        if not node or node[0] != dst:
+            return None
+        return node[1] + [dst]
+                
+
 
     @classmethod
     def graph_from_file(cls, file_name):
@@ -131,4 +146,3 @@ class Graph:
                 else:
                     raise Exception("Format incorrect")
         return graph
-
