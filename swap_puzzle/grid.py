@@ -139,14 +139,15 @@ class Grid:
         """
         i, j = cell
         swaps = []
-        if i > 0:
-            swaps.append((i - 1, j))  # Swap with the left cell
-        if i < self.n - 1:
-            swaps.append((i + 1, j))  # Swap with the right cell
-        if j > 0:
-            swaps.append((i, j - 1))  # Swap with the bottom cell
         if j < self.m - 1:
-            swaps.append((i, j + 1))  # Swap with the top cell
+            swaps.append((i, j + 1))  # Swap with the right cell
+        if i > 0:
+            swaps.append((i - 1, j))  # Swap with the top cell
+        if j > 0:
+            swaps.append((i, j - 1))  # Swap with the left cell
+        if i < self.n - 1:
+            swaps.append((i + 1, j))  # Swap with the bottom cell
+
         return swaps
 
     @classmethod
@@ -196,7 +197,7 @@ class Grid:
         return tuple(L)
 
     @classmethod
-    def grid_from_tuple(tup: Tuple[int, ...]) -> "Grid":
+    def grid_from_tuple(cls, tup: Tuple[int, ...]) -> "Grid":
         """
         Creates the grid corresponding to the given tuple.
 
