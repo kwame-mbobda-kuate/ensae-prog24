@@ -1,3 +1,4 @@
+import random
 from typing import List, Tuple
 
 """
@@ -185,7 +186,7 @@ class Grid:
         tuple: Tuple[int, ...]
             The representation of the grid. The first two elements are the numbers of lines and colums.
             The remaining ones are the contents of each cell, from the left to the right then from top to bottom
-            (state[0][0], state[0][1], ..., state[0][n], state[1][0], state[1][1], ..., state[1][n - 1], ...
+            (m, n, state[0][0], state[0][1], ..., state[0][n], state[1][0], state[1][1], ..., state[1][n - 1], ...
             state[m - 1][0], state[m - 1][1], ..., state[m - 1][n - 1])
         """
         L = [self.m, self.n]
@@ -219,6 +220,27 @@ class Grid:
                     i * grid.n + j + 2
                 ]  # The "+2" accounts for the first two elements being the numbers of lines and columns.
         return grid
+
+    @classmethod
+    def random_grid(cls, m: int, n: int) -> "Grid":
+        """
+        Creates and returns a grid choosen randomly and uniformly.
+
+        Parameters:
+        -----------
+        m: int
+            Number of lines in the grid wanted.
+        n: int
+            Number of columns in the grid wanted.
+
+        Output:
+        -------
+        grid: Grid
+            The grid.
+        """
+        state = [*range(1, 1 + m * n)]
+        random.shuffle(state)
+        return Grid.grid_from_tuple(m, n, state)
 
     def all_swaps(self) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
         """
