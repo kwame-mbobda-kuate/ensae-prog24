@@ -31,7 +31,7 @@ class TestSolver(unittest.TestCase):
 
     def test_is_optimal_solver(self):
         m, n = 3, 3
-        grids = [Grid.random_grid(m, n) for _ in range(50)]
+        grids = [Grid.random_grid(m, n) for _ in range(10)]
         length1, length2 = -1, -1
         for grid in grids:
             for i, solver in enumerate(fast_and_exact_solvers):

@@ -206,14 +206,15 @@ def a_star_solver(
     swaps: List[Tuple[Tuple[int, int], Tuple[int, int]]]
         The sequence of swaps at the format [((i1, j1), (i2, j2)), ((i1', j1'), (i2', j2')), ...].
     """
+    counter = itertools.count()
     open_set, closed_set = dict(), dict()
     src = grid.to_tuple()
     dst = Grid(grid.m, grid.n).to_tuple()
     all_swaps = grid.all_swaps()
-    queue = [(0, src, 0, None)]
+    queue = [(0, -next(counter), src, 0, None)]
     heapq.heapify(queue)
     while queue:
-        _, node, node_g, parent = heapq.heappop(queue)
+        _, _, node, node_g, parent = heapq.heappop(queue)
         if node == dst:
             path = [node]
             while parent:
@@ -239,7 +240,10 @@ def a_star_solver(
             else:
                 move_h = heuristic(neighbor)
             open_set[neighbor] = tentative_g, move_h
-            heapq.heappush(queue, (move_h + tentative_g, neighbor, tentative_g, node))
+            heapq.heappush(
+                queue,
+                (move_h + tentative_g, -next(counter), neighbor, tentative_g, node),
+            )
 
 
 def halved_manhattan_distance(grid: Tuple[int, ...]) -> float:
