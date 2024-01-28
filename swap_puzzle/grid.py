@@ -241,7 +241,7 @@ class Grid:
         """
         state = [*range(1, 1 + m * n)]
         random.shuffle(state)
-        return Grid.grid_from_tuple(m, n, state)
+        return Grid.grid_from_tuple([m, n] + state)
 
     def all_swaps(self) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
         """

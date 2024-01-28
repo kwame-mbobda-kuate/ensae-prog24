@@ -56,7 +56,7 @@ def naive_solver(grid: Grid) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
                 cpy.swap(*swaps[-1])
                 i2 += sign(i - i2)
             k += 1
-            
+
     return swaps
 
 
@@ -170,8 +170,24 @@ def bfs_solver(grid: Grid) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
     return node[1]
 
 
+class ComparableTuple(tuple):
+    """
+    Tuple comparaisons are, by default, done by a lexicographic comparison which is not suited here.
+    The comparisons are here done using a custom function.
+    """
+
+    def __new__(cls, cmp, *args):
+        return super(ComparableTuple, cls).__new__(cls, *args)
+
+    def __init__(self, cmp, *args):
+        self.cmp = cmp
+
+    def __lt__(self, other):
+        return self.cmp(self, other)
+
+
 def a_star_solver(
-    grid: Grid, h: Callable[[Tuple[int, ...]], float]
+    grid: Grid, heuristic: Callable[[Tuple[int, ...]], float]
 ) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
     """
     Compute an optimal solution by using the A* algorithm.
@@ -181,7 +197,7 @@ def a_star_solver(
     -----------
     grid: Grid
         The grid to be solved.
-    h: Callable[[Tuple[int, ...]], float]
+    heuristic: Callable[[Tuple[int, ...]], float]
         An heuristic function, which takes a tuple representation of a grid
         and retuns a float.
 
@@ -190,53 +206,48 @@ def a_star_solver(
     swaps: List[Tuple[Tuple[int, int], Tuple[int, int]]]
         The sequence of swaps at the format [((i1, j1), (i2, j2)), ((i1', j1'), (i2', j2')), ...].
     """
-    f_score = dict()
-
-    class ComparableTuple(tuple):
-        """
-        Tuple comparaisons are, by default, done by a lexicographic comparison which is not suited here.
-        The comparisons are here done using a map.
-        """
-
-        def __lt__(self, other):
-            return f_score.get(self, math.inf) < f_score.get(other, math.inf)
-
+    open_set, closed_set = dict(), dict()
+    src = grid.to_tuple()
+    dst = Grid(grid.m, grid.n).to_tuple()
     all_swaps = grid.all_swaps()
-    src = ComparableTuple(grid.to_tuple())
-    dest = ComparableTuple(Grid(grid.m, grid.n).to_tuple())
-    open_set = [src]
-    heapq.heapify(open_set)
-    came_from = dict()
-    g_score = dict()
-    g_score[src] = 0
-    f_score[src] = h(src)
-    while open_set:
-        current = heapq.heappop(open_set)
-        if current == dest:
-            total_path = [current]
-            while current in came_from.keys():
-                current = came_from[current]
-                total_path.insert(0, current)
-            return reconstruct_path(total_path)
+    queue = [(0, src, 0, None)]
+    heapq.heapify(queue)
+    while queue:
+        _, node, node_g, parent = heapq.heappop(queue)
+        if node == dst:
+            path = [node]
+            while parent:
+                path.append(parent)
+                parent = closed_set[parent]
+            path.reverse()
+            return reconstruct_path(path)
+        if node in closed_set:
+            continue
+        closed_set[node] = parent
+        tentative_g = node_g + 1
+        list_ = list(node)
         for swap in all_swaps:
-            neighbor = list(current)
-            make_swap(neighbor, swap)
-            neighbor = ComparableTuple(neighbor)
-            tentative_g_score = g_score.get(current, math.inf) + 1
-            if tentative_g_score < g_score.get(neighbor, math.inf):
-                came_from[neighbor] = current
-                g_score[neighbor] = tentative_g_score
-                f_score[neighbor] = tentative_g_score + h(neighbor)
-                if neighbor not in open_set:
-                    heapq.heappush(open_set, neighbor)
+            make_swap(list_, swap)
+            neighbor = tuple(list_)
+            make_swap(list_, swap)
+            if neighbor in closed_set:
+                continue
+            if neighbor in open_set:
+                move_g, move_h = open_set[neighbor]
+                if move_g <= tentative_g:
+                    continue
+            else:
+                move_h = heuristic(neighbor)
+            open_set[neighbor] = tentative_g, move_h
+            heapq.heappush(queue, (move_h + tentative_g, neighbor, tentative_g, node))
 
 
 def halved_manhattan_distance(grid: Tuple[int, ...]) -> float:
     """
     Compute the half sum of the Manhattan distances (also known as L1 distance on R^2)
     between each the cell occupied by each number in a given grid and the cell it
-    should occupy in the sorted grid. It can be shown that this function is an
-    admissible heuristic.
+    should occupy in the sorted grid. It can be shown that this function is a
+    monotone (and thus admissible) heuristic.
 
     Parameter:
     ----------
@@ -261,9 +272,19 @@ def halved_manhattan_distance(grid: Tuple[int, ...]) -> float:
     return sum_manhattan / 2
 
 
-def manhattan_a_star_solver(grid: Grid):
+def manhattan_a_star_solver(grid: Grid, weight: float = 1):
     """
     Compute an optimal solution by using the A* algorithm and
-    the Manhattan distance as heuristic.
+    the weighted Manhattan distance as heuristic.
+
+    Parameters:
+    -----------
+    grid: Grid
+        The grid to solve.
+    weight: float
+        A real number larger than 1.
+        The algorithm is optimal for a weight of 1 but increasing
+        it speeds up the algorithm at the cost of the quality of
+        the solution.
     """
-    return a_star_solver(grid, halved_manhattan_distance)
+    return a_star_solver(grid, lambda g: weight * halved_manhattan_distance(g))

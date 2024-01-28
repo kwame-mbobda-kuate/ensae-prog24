@@ -7,8 +7,7 @@ import unittest
 from grid import Grid
 
 
-class Test_GridLoading(unittest.TestCase):
-    
+class TestToTuple(unittest.TestCase):
     def test_grid0(self):
         g = Grid.grid_from_file("input/grid0.in")
         self.assertEqual(g.to_tuple(), (2, 2, 2, 4, 3, 1))

@@ -8,7 +8,7 @@ from grid import Grid
 from graph import Graph
 
 
-class Test_Graph(unittest.TestCase):
+class TestGraph(unittest.TestCase):
     def aux_test_graph(self, input_filename, output_filename):
         graph = Graph.graph_from_file(input_filename)
         with open(output_filename, "r") as f:

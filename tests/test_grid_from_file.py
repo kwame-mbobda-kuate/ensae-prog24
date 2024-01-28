@@ -7,7 +7,7 @@ import unittest
 from grid import Grid
 
 
-class Test_GridLoading(unittest.TestCase):
+class TestGridLoading(unittest.TestCase):
     def test_grid0(self):
         g = Grid.grid_from_file("input/grid0.in")
         self.assertEqual(g.m, 2)
