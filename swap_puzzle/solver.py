@@ -9,6 +9,27 @@ import heapq
 import math
 
 
+class NaiveSolver(): 
+    """
+    Defining the first solvers, called naives
+
+    """
+    def __init__(self, grid):
+        self.grid = grid
+
+
+class HeuristicSolver(): 
+    """
+    Defining the solvers based on heuristic methods
+
+    """
+    def __init__(self, heuristic):
+        self.heuristic = heuristic
+    
+    def solve(grid):
+        raise NotImplementedError
+
+
 def sign(x: float) -> int:
     """
     Computes the sign of a float.
@@ -28,36 +49,37 @@ def sign(x: float) -> int:
     return -1
 
 
-def naive_solver(grid: Grid) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
-    """
-    Swaps cells in order to put, in increasing order, each number at its place.
-    It then returns the sequence of swaps at the format
-    [((i1, j1), (i2, j2)), ((i1', j1'), (i2', j2')), ...].
-    """
-    cpy = copy.deepcopy(grid)
-    swaps = []
-    k = 1  # The number about to be placed in the right place.
-    for i in range(grid.m):
-        for j in range(grid.n):
-            # Searches the grid for k
-            for i2 in range(grid.m):
-                for j2 in range(grid.n):
+class NaiveSolver1(NaiveSolver):
+    def solve(grid: Grid) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
+        """
+        Swaps cells in order to put, in increasing order, each number at its place.
+        It then returns the sequence of swaps at the format
+        [((i1, j1), (i2, j2)), ((i1', j1'), (i2', j2')), ...].
+        """
+        cpy = copy.deepcopy(grid)
+        swaps = []
+        k = 1  # The number about to be placed in the right place.
+        for i in range(grid.m):
+            for j in range(grid.n):
+                # Searches the grid for k
+                for i2 in range(grid.m):
+                    for j2 in range(grid.n):
+                        if cpy.state[i2][j2] == k:
+                            break
                     if cpy.state[i2][j2] == k:
                         break
-                if cpy.state[i2][j2] == k:
-                    break
-            # Swaps are done horizontally then vertically.
-            while j2 != j:
-                swaps.append(((i2, j2), (i2, j2 + sign(j - j2))))
-                cpy.swap(*swaps[-1])
-                j2 += sign(j - j2)
-            while i2 != i:
-                swaps.append(((i2, j2), (i2 + sign(i - i2), j2)))
-                cpy.swap(*swaps[-1])
-                i2 += sign(i - i2)
-            k += 1
+                # Swaps are done horizontally then vertically.
+                while j2 != j:
+                    swaps.append(((i2, j2), (i2, j2 + sign(j - j2))))
+                    cpy.swap(*swaps[-1])
+                    j2 += sign(j - j2)
+                while i2 != i:
+                    swaps.append(((i2, j2), (i2 + sign(i - i2), j2)))
+                    cpy.swap(*swaps[-1])
+                    i2 += sign(i - i2)
+                k += 1
 
-    return swaps
+        return swaps
 
 
 def make_swap(grid: Tuple[int, ...], swap: Tuple[int, int]) -> None:
@@ -117,57 +139,59 @@ def reconstruct_path(
     return swaps
 
 
-def naive_bfs_solver(grid: Grid) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
-    """
-    Constructs the full graph of possible grids and performs a breadth-first search
-    to compute an optimal solution. It then returns the sequence of swaps at the format
-    [((i1, j1), (i2, j2)), ((i1', j1'), (i2', j2')), ...].
-    """
-    src = grid.to_tuple()
-    m, n = grid.m, grid.n
-    all_swaps = grid.all_swaps()
-    nodes = [
-        tuple([m, n] + [*perm]) for perm in itertools.permutations(range(1, 1 + m * n))
-    ]
-    graph = Graph(nodes)
-    for node in nodes:
-        list_node = list(node)
-        for swap in all_swaps:
-            make_swap(list_node, swap)
-            graph.add_edge(node, tuple(list_node))
-            make_swap(list_node, swap)  # Redoing the swap to undo it
-    path = graph.bfs(src, tuple([m, n] + [x + 1 for x in range(n * m)]))
-    return reconstruct_path(path)
+class NaiveBFSSolver(NaiveSolver):
+    def solve(grid: Grid) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
+        """
+        Constructs the full graph of possible grids and performs a breadth-first search
+        to compute an optimal solution. It then returns the sequence of swaps at the format
+        [((i1, j1), (i2, j2)), ((i1', j1'), (i2', j2')), ...].
+        """
+        src = grid.to_tuple()
+        m, n = grid.m, grid.n
+        all_swaps = grid.all_swaps()
+        nodes = [
+            tuple([m, n] + [*perm]) for perm in itertools.permutations(range(1, 1 + m * n))
+        ]
+        graph = Graph(nodes)
+        for node in nodes:
+            list_node = list(node)
+            for swap in all_swaps:
+                make_swap(list_node, swap)
+                graph.add_edge(node, tuple(list_node))
+                make_swap(list_node, swap)  # Redoing the swap to undo it
+        path = graph.bfs(src, tuple([m, n] + [x + 1 for x in range(n * m)]))
+        return reconstruct_path(path)
 
 
-def bfs_solver(grid: Grid) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
-    """
-    Performs a breadth-first search on a graph which is expanded gradually
-    to compute an optimal solution. It then returns the sequence of swaps at the format
-    [((i1, j1), (i2, j2)), ((i1', j1'), (i2', j2')), ...].
-    """
-    all_swaps = grid.all_swaps()
-    m, n = grid.m, grid.n
-    src = grid.to_tuple()
-    dst = Grid(m, n).to_tuple()
-    seen = set([src])
-    queue = collections.deque([(src, [])])
-    # The element of the queue are of the form (Tuple[int, ...], List[Tuple[Tuple[int, int], Tuple[int, int]]])
-    # where the first element is tuple representation of a grid and the second the swaps needed to obtain it
-    # starting from src.
-    node = None
-    while queue and (node is None or node[0] != dst):
-        node = queue.pop()
-        L = list(node[0])
-        for swap in all_swaps:
-            make_swap(L, swap)
-            cpy = tuple(L)
-            if cpy not in seen:
-                path = node[1] + [swap]
-                queue.appendleft((cpy, path))
-                seen.add(cpy)
-            make_swap(L, swap)
-    return node[1]
+class BFSSolver(NaiveSolver):
+    def solve(grid: Grid) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
+        """
+        Performs a breadth-first search on a graph which is expanded gradually
+        to compute an optimal solution. It then returns the sequence of swaps at the format
+        [((i1, j1), (i2, j2)), ((i1', j1'), (i2', j2')), ...].
+        """
+        all_swaps = grid.all_swaps()
+        m, n = grid.m, grid.n
+        src = grid.to_tuple()
+        dst = Grid(m, n).to_tuple()
+        seen = set([src])
+        queue = collections.deque([(src, [])])
+        # The element of the queue are of the form (Tuple[int, ...], List[Tuple[Tuple[int, int], Tuple[int, int]]])
+        # where the first element is tuple representation of a grid and the second the swaps needed to obtain it
+        # starting from src.
+        node = None
+        while queue and (node is None or node[0] != dst):
+            node = queue.pop()
+            L = list(node[0])
+            for swap in all_swaps:
+                make_swap(L, swap)
+                cpy = tuple(L)
+                if cpy not in seen:
+                    path = node[1] + [swap]
+                    queue.appendleft((cpy, path))
+                    seen.add(cpy)
+                make_swap(L, swap)
+        return node[1]
 
 
 class ComparableTuple(tuple):
@@ -186,65 +210,65 @@ class ComparableTuple(tuple):
         return self.cmp(self, other)
 
 
-def a_star_solver(
-    grid: Grid, heuristic: Callable[[Tuple[int, ...]], float]
-) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
-    """
-    Compute an optimal solution by using the A* algorithm.
-    Implementation derived from https://en.wikipedia.org/wiki/A*_search_algorithm.
+class AStarSolver(HeuristicSolver):
+    def solve(
+        grid: Grid, heuristic: Callable[[Tuple[int, ...]], float]
+    ) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
+        """
+        Compute an optimal solution by using the A* algorithm.
+        Implementation derived from https://en.wikipedia.org/wiki/A*_search_algorithm.
 
-    Parameters:
-    -----------
-    grid: Grid
-        The grid to be solved.
-    heuristic: Callable[[Tuple[int, ...]], float]
-        An heuristic function, which takes a tuple representation of a grid
-        and retuns a float.
+        Parameters:
+        -----------
+        grid: Grid
+            The grid to be solved.
+        heuristic: Callable[[Tuple[int, ...]], float]
+            An heuristic function, which takes a tuple representation of a grid
+            and retuns a float.
 
-    Ouput:
-    ------
-    swaps: List[Tuple[Tuple[int, int], Tuple[int, int]]]
-        The sequence of swaps at the format [((i1, j1), (i2, j2)), ((i1', j1'), (i2', j2')), ...].
-    """
-    counter = itertools.count()
-    # An iterable which will yield 0, 1, 2, ...
-    open_set, closed_set = dict(), dict()
-    src = grid.to_tuple()
-    dst = Grid(grid.m, grid.n).to_tuple()
-    all_swaps = grid.all_swaps()
-    queue = [(0, -next(counter), src, 0, None)]
-    heapq.heapify(queue)
-    while queue:
-        _, _, node, node_g, parent = heapq.heappop(queue)
-        if node == dst:
-            path = [node]
-            while parent:
-                path.append(parent)
-                parent = closed_set[parent]
-            path.reverse()
-            return reconstruct_path(path)
-        if node in closed_set:
-            continue
-        closed_set[node] = parent
-        tentative_g = node_g + 1
-        list_ = list(node)
-        for swap in all_swaps:
-            make_swap(list_, swap)
-            neighbor = tuple(list_)
-            make_swap(list_, swap)
-            if neighbor in closed_set:
+        Ouput:
+        ------
+        swaps: List[Tuple[Tuple[int, int], Tuple[int, int]]]
+            The sequence of swaps at the format [((i1, j1), (i2, j2)), ((i1', j1'), (i2', j2')), ...].
+        """
+        counter = itertools.count()
+        open_set, closed_set = dict(), dict()
+        src = grid.to_tuple()
+        dst = Grid(grid.m, grid.n).to_tuple()
+        all_swaps = grid.all_swaps()
+        queue = [(0, -next(counter), src, 0, None)]
+        heapq.heapify(queue)
+        while queue:
+            _, _, node, node_g, parent = heapq.heappop(queue)
+            if node == dst:
+                path = [node]
+                while parent:
+                    path.append(parent)
+                    parent = closed_set[parent]
+                path.reverse()
+                return reconstruct_path(path)
+            if node in closed_set:
                 continue
-            if neighbor in open_set:
-                move_g, move_h = open_set[neighbor]
-                if move_g <= tentative_g:
+            closed_set[node] = parent
+            tentative_g = node_g + 1
+            list_ = list(node)
+            for swap in all_swaps:
+                make_swap(list_, swap)
+                neighbor = tuple(list_)
+                make_swap(list_, swap)
+                if neighbor in closed_set:
                     continue
-            else:
-                move_h = heuristic(neighbor)
-            open_set[neighbor] = (tentative_g, move_h)
-            heapq.heappush(
-                queue,
-                (move_h + tentative_g, -next(counter), neighbor, tentative_g, node),
-            )
+                if neighbor in open_set:
+                    move_g, move_h = open_set[neighbor]
+                    if move_g <= tentative_g:
+                        continue
+                else:
+                    move_h = heuristic(neighbor)
+                open_set[neighbor] = tentative_g, move_h
+                heapq.heappush(
+                    queue,
+                    (move_h + tentative_g, -next(counter), neighbor, tentative_g, node),
+                )
 
 
 def halved_manhattan_distance(grid: Tuple[int, ...]) -> float:
@@ -275,22 +299,3 @@ def halved_manhattan_distance(grid: Tuple[int, ...]) -> float:
                 (grid[i * n + j + 2] - 1) % n - j
             )
     return sum_manhattan / 2
-
-
-def manhattan_a_star_solver(grid: Grid, weight: float = 1):
-    """
-    Compute an optimal solution by using the A* algorithm and
-    the weighted Manhattan distance as heuristic.
-
-    Parameters:
-    -----------
-    grid: Grid
-        The grid to solve.
-    weight: float
-        A real number larger than 1.
-        The algorithm is optimal for a weight of 1 but increasing
-        it speeds up the algorithm at the cost of the quality of
-        the solution.
-    """
-
-    return a_star_solver(grid, lambda g: weight * halved_manhattan_distance(g))

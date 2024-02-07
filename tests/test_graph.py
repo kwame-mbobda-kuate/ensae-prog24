@@ -19,8 +19,7 @@ class TestGraph(unittest.TestCase):
                 if "None" in line:
                     path = "None"
                 else:
-                    path = line[line.index("[") :].strip()
-                print(path)
+                    path = line[line.index("[") :].strip() 
                 self.assertEqual(path, str(graph.bfs(src, dst)))
 
     def test_graph1(self):
