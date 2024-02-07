@@ -207,6 +207,7 @@ def a_star_solver(
         The sequence of swaps at the format [((i1, j1), (i2, j2)), ((i1', j1'), (i2', j2')), ...].
     """
     counter = itertools.count()
+    # An iterable which will yield 0, 1, 2, ...
     open_set, closed_set = dict(), dict()
     src = grid.to_tuple()
     dst = Grid(grid.m, grid.n).to_tuple()
@@ -239,7 +240,7 @@ def a_star_solver(
                     continue
             else:
                 move_h = heuristic(neighbor)
-            open_set[neighbor] = tentative_g, move_h
+            open_set[neighbor] = (tentative_g, move_h)
             heapq.heappush(
                 queue,
                 (move_h + tentative_g, -next(counter), neighbor, tentative_g, node),
@@ -291,4 +292,5 @@ def manhattan_a_star_solver(grid: Grid, weight: float = 1):
         it speeds up the algorithm at the cost of the quality of
         the solution.
     """
+
     return a_star_solver(grid, lambda g: weight * halved_manhattan_distance(g))

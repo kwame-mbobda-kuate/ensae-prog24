@@ -1,4 +1,3 @@
-import random
 import grid
 import graphics
 import solver
