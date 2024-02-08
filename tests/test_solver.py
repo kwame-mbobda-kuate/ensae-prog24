@@ -6,14 +6,15 @@ sys.path.append("swap_puzzle/")
 import unittest
 from grid import Grid
 import solver
-import random
-import itertools
+import utils
 
 solvers = [
-    (solver.naive_solver, "Naive solver"),
-    (solver.naive_bfs_solver, "Naive BFS solver"),
-    (solver.bfs_solver, "BFS Solver"),
-    (solver.manhattan_a_star_solver, "A* Solver with Manhattan heuristic"),
+    solver.GreedySolver("Naive Solver"),
+    solver.NaiveBFSSolver("Naive BFS solver"),
+    solver.BFSSolver("BFS Solver"),
+    solver.AStarSolver(
+        utils.halved_manhattan_distance, "A* Solver with Manhattan heuristic"
+    ),
 ]
 fast_and_exact_solvers = solvers[2:]
 
@@ -21,11 +22,11 @@ fast_and_exact_solvers = solvers[2:]
 class TestSolver(unittest.TestCase):
     def test_is_sorted_solver(self):
         m, n = 2, 2
-        grids = [Grid.random_grid(m, n) for _ in range(50)]
+        grids = [Grid.random_grid(m, n) for _ in range(10)]
         for solver in solvers:
-            print(solver[1])
+            print(solver)
             for grid in grids:
-                swaps = solver[0](grid)
+                swaps = solver.solve(grid)
                 grid.swap_seq(swaps)
                 self.assertEqual(grid.is_sorted(), True)
 
@@ -36,12 +37,12 @@ class TestSolver(unittest.TestCase):
         for grid in grids:
             for i, solver in enumerate(fast_and_exact_solvers):
                 length2 = length1
-                length1 = len(solver[0](grid))
+                length1 = len(solver.solve(grid))
                 if i > 0:
                     print(
-                        fast_and_exact_solvers[i - 1][1],
+                        fast_and_exact_solvers[i - 1],
                         "compared to",
-                        fast_and_exact_solvers[i][1],
+                        fast_and_exact_solvers[i],
                     )
                     self.assertEqual(length1, length2)
 

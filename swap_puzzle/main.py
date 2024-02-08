@@ -1,9 +1,11 @@
 import grid
 import graphics
 import solver
+import utils
 
-n, m = 4, 4
+n, m = 2, 2
 grid = grid.Grid.random_grid(m, n)
 print(grid)
-print(solver.manhattan_a_star_solver(grid))
-graphics.game(grid, 800, 800)
+s = solver.AStarSolver(utils.halved_manhattan_distance)
+print(s.solve(grid))
+graphics.game(grid, 600, 600)

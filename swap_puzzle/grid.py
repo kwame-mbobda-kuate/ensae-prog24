@@ -243,7 +243,8 @@ class Grid:
         random.shuffle(state)
         return Grid.grid_from_tuple([m, n] + state)
 
-    def all_swaps(self) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
+    @classmethod
+    def all_swaps(cls, m, n) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
         """
         Generates the list of all possible swaps.
         For symetry reasons, only the swaps involving
@@ -257,10 +258,10 @@ class Grid:
         So the format is [((i1, j1), (i2, j2)), ((i1', j1'), (i2', j2')), ...]
         """
         swaps = []
-        for i in range(self.m):
-            for j in range(self.n):
-                if i < self.m - 1:
+        for i in range(m):
+            for j in range(n):
+                if i < m - 1:
                     swaps.append([(i, j), (i + 1, j)])
-                if j < self.n - 1:
+                if j < n - 1:
                     swaps.append([(i, j), (i, j + 1)])
         return swaps
