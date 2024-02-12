@@ -9,6 +9,10 @@ import heapq
 import math
 
 
+FWD = 0
+BWD = 1
+MAX_LENGTH = 50
+
 class NaiveSolver:
     """
     A class to represent solvers which doesn't use an heuristic.
@@ -205,11 +209,13 @@ class AStarSolver(HeuristicSolver):
                 )
 
 
-class MMUCe:
+class MMUCe1:
     """
     An incomplete implementation of Meet in the Middle for Unit Costs,
     a bidirectional search algorithm described in
     https://ojs.aaai.org/index.php/SOCS/article/download/18514/18305/22030.
+    In this version we assume that f_min and g_min are given by the
+    f and  values of the node with minimal priority.
     """
 
     def __init__(self, name, heuristic_f, heuristic_b, eps):
@@ -221,92 +227,105 @@ class MMUCe:
     def __repr__(self):
         return self.name
 
-    def choose_direction(self, sets, U, changed, last_direction):
-        raise NotImplementedError
-        """min_node_f = sets[0]["queue"][0]
-        min_node_b = sets[1]["queue"][0]
-        pr_min_f = min_node_f[0]
-        pr_min_b = min_node_b[0][0]
-        if pr_min_f < pr_min_b:
-            return 0
-        if pr_min_f > pr_min_b:
-            return 1
+    def choose_direction(self, open_sets, pr_queues, U, last_direction, changed):
+
+
+        if pr_queues[FWD][0][0] < pr_queues[BWD][0][0]:
+            return FWD
+        if pr_queues[FWD][0][0] > pr_queues[BWD][0][0]:
+            return BWD
         if U == math.inf:
-            if min_node_f[3] <= min_node_b[3]:
-                return 0
-            return 1
+            for dir in (BWD, FWD):
+                #À compléter
+            return BWD
         if changed:
-            if len(sets[0]["open_set"]) < len(sets[1]["open_set"]):
-                return 1
-            return 0
-        return last_direction"""
+            if len(open_sets[FWD]) <= len(open_sets[BWD]):
+                return BWD
+            return FWD
+        return last_direction
 
     def solve(self, grid):
-        raise NotImplementedError
-        """src = grid.to_tuple()
+        src = grid.to_tuple()
         dst = Grid(grid.m, grid.n).to_tuple()
         all_swaps = Grid.all_swaps(grid.m, grid.n)
         counter = itertools.count()
-        open_set_f, closed_set_f = {src: ()}, set()
-        open_set_b, closed_set_b = {dst: ()}, set()
-        queue_f = [(max(self.eps, self.heuristic_f(src)), -next(counter), src, 0, None)]
-        queue_b = [(max(self.eps, self.heuristic_b(src)), -next(counter), dst, 0, None)]
-        heapq.heapify(queue_f)
-        heapq.heapify(queue_b)
-        sets = [{"open_set": open_set_f, "closed_set": closed_set_f, "g_score": g_score_f, "heuristic": self.heuristic_f, "queue": queue_f},
-                {"open_set": open_set_b, "closed_set": closed_set_b, "g_score": g_score_b, "heuristic": self.heuristic_b, "queue": queue_f}]
-        
-        U = math.inf
-        last_direction = 0
-        last_good_node = None
-        f_min_f, f_min_b = self.heuristic_f(src), self.heuristic_b(src)
-        g_min_f, g_min_b = 0, 0
+        nodes = [src, dst]
+        heuristics = [self.heuristic_f, self.heuristic_b]
+        came_froms = [dict(), dict()]
+        open_sets, closed_sets, f_queues, g_queues, pr_queues, g_scores = [], [], [], [], [], []
+        for dir in (FWD, BWD):
+            g_scores.append({nodes[dir]: 0})
+            open_sets.append(set([node[dir]]))
+            closed_sets.append(set())
+            pr_queue = [(max(self.eps, heuristics[dir](nodes[dir])), -next(counter), nodes[dir])]
+            #(priority, index, node)
+            g_queue = utils.SortedList(MAX_LENGTH, [0, nodes[dir]])
+            f_queue = utils.SortedList(MAX_LENGTH, [(heuristics[dir](nodes[dir]), nodes[dir])])
+            f_queues.append(f_queue)
+            g_queues.append(g_queue)
+            pr_queues.append(pr_queue)
 
-        while open_set_f and open_set_b:
-            min_node_f = queue_f[0]
-            min_node_b = queue_b[0]
-            pr_min_f = min_node_f[0]
-            pr_min_b = min_node_b[0]
+        U = math.inf
+        last_good_node = None
+        changed = False
+        pr_min_f, pr_min_b = -1, -1
+
+        while open_sets[FWD] and open_sets[BWD]:
+            if pr_min_f != pr_queues[FWD][0][0] or pr_min_b != pr_queues[BWD][0][0]:
+                changed = True
+            pr_min_f = pr_queues[FWD][0][0]
+            pr_min_b = pr_queues[BWD][0][0]
+            g_min_f = g_queues[FWD][0]
+            g_min_b = g_queues[BWD][0]
+            f_min_f = f_queues[FWD][0]
+            f_min_b = f_queues[BWD][0]
             C = min(pr_min_f, pr_min_b)
             if U <= max(C, f_min_f, f_min_b, g_min_f + g_min_b + self.eps):
-                path = [last_good_node]
-                node = closed_set_f[last_good_node]
+                path = []
+                node = last_good_node
                 while node:
                     path.append(node)
-                    node = closed_set_f[node]
+                    node = came_froms[FWD].get(node, None)
                 path.reverse()
-                node = closed_set_b[last_good_node]
+                node = came_froms[BWD].get(node, None)
                 while node:
                     path.append(node)
-                    node = closed_set_b[node]
-            direction = self.choose_direction(sets, last_direction)
-            last_direction = direction
-            
-            _, _, node, node_g, parent = heapq.heappop(sets[direction]["queue"])
-            if node in sets[direction]["closed_set"]:
-                continue
-            sets[direction]["closed_set"][node] = parent
-            sets[direction]["open_set"].remove(node)
-            tentative_g = node_g + 1
+                    node = came_froms[BWD].get(node, None)
+                return path
+
+            dir = self.choose_direction(open_sets, pr_queues, U, dir, changed)
+            changed = False
+            _, _, node = heapq.heappop(pr_queues[dir])
+            open_sets[dir].remove(node)
+            g_queues[dir].remove(node)
+            f_queues[dir].remove(node)
+            closed_sets[dir].add(node)
             list_ = list(node)
             for swap in all_swaps:
                 utils.make_swap(list_, swap)
                 neighbor = tuple(list_)
                 utils.make_swap(list_, swap)
-                if neighbor in sets[direction]["closed_set"] or neighbor in sets[direction]["open_set"] and \
-                    open_set[]:
+                if (neighbor in open_sets[dir] or neighbor in closed_sets[dir]) and g_scores[dir][neighbor] <= g_scores[dir][node] + 1:
                     continue
-                if neighbor in sets[direction]["open_set"]:
-                    move_g, move_h = sets[direction]["open_set"][neighbor]
-                    if move_g <= tentative_g:
-                        continue
-                else:
-                    move_h = sets[direction]["heuristic"](neighbor)
-                sets[direction]["open_set"][neighbor] = tentative_g, move_h
-                heapq.heappush(
-                    sets[direction]["queue"],
-                    (max(2*tentative_g + self.eps, tentative_g + move_h), -next(counter), neighbor, tentative_g, node),
-                )
-                if neighbor in sets[1-direction]["open_set"]:
-                    last_good_node = neighbor
-                    U = min(U, open_set_b[neighbor][1] + open_set_f[1])"""
+                if neighbor in closed_sets[dir]:
+                    closed_sets[dir].remove(neighbor)
+                if neighbor in open_sets[dir]:
+                    open_sets[dir].remove(neighbor)
+                    g_queues[dir].remove(neighbor)
+                    f_queues[dir].remove(neighbor)
+                    utils.remove_from_heapq(pr_queues[dir], neighbor)
+
+                g_scores[dir][neighbor] = g_scores[dir][node] + 1
+                f_score = g_scores[dir][neighbor] + heuristics[dir](neighbor)
+
+                open_sets[dir].add(neighbor)
+                heapq.heappush(pr_queues[dir], (max(2*g_scores[dir][neighbor] + self.eps, f_score), neighbor))
+                f_queues[dir].add(neighbor, neighbor)
+                g_queues[dir].add(neighbor, g_scores[dir][neighbor])
+                came_froms[dir][neighbor] = node
+
+                if neighbor in open_sets[1-dir]:
+                    if U > g_scores[dir][neighbor] + g_scores[1-dir][neighbor]:
+                        U = g_scores[dir][neighbor] + g_scores[1-dir][neighbor]
+                        last_good_node = neighbor
+                        changed = True

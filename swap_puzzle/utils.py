@@ -1,5 +1,7 @@
 from typing import List, Tuple, Callable
 from grid import Grid
+import heapq
+import bisect
 import random
 
 
@@ -107,3 +109,36 @@ def halved_manhattan_distance(grid: Tuple[int, ...]) -> float:
                 (grid[i * n + j + 2] - 1) % n - j
             )
     return sum_manhattan / 2
+
+
+class SortedList:
+
+    def __init__(self, max_length, elements):
+        self.max_length = max_length
+        self.elements = [*sorted(elements)][:max_length]
+
+    def remove(self, node):
+        for i, element in enumerate(self.elements):
+            if element[-1] == node:
+                break
+        if i < len(self.elements):
+            self.elements.pop(i)
+
+    def min(self):
+        return self.elements[0][0]
+
+    def add(self, node, value):
+        if value > self.elements[-1][0]:
+            return
+        if len(self.elements) == self.max_length:
+            self.elements.pop()
+        bisect.insort(self.elements, (value, node))
+
+
+def remove_from_heapq(heap, val):
+    for i, el in enumerate(heap):
+        if heap[-1] == val:
+            break
+    if i < len(heap):
+        heap.pop(i)
+        heapq.heapify(heap)
