@@ -125,7 +125,7 @@ def generate_grid(m,n,a,b):
     
     grid = Grid(m, n)
     mini,maxi = math.ceil(a*dmax),math.floor(b*dmax)   #interval of distance
-    k = random.randint(mini,maxi)   #level of difficulty between this interval
+    k = random.randint(mini,maxi)   #level of difficulty within this interval
 
     swaps=Grid.all_swaps(m,n)
     while halved_manhattan_distance(grid.to_tuple()) !=k:
