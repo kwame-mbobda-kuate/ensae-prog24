@@ -158,7 +158,7 @@ class Grid:
         Parameters:
         -----------
         file_name: str
-            Name of the file to load. The file must be of the format:
+            Name of the file to load. The file must be in the following format:
             - first line contains "m n"
             - next m lines contain n integers that represent the state of the corresponding cell
 
@@ -185,8 +185,8 @@ class Grid:
         Output:
         -------
         tuple: Tuple[int, ...]
-            The representation of the grid. The first two elements are the numbers of lines and colums.
-            The remaining ones are the contents of each cell, from the left to the right then from top to bottom
+            The representation of the grid. The first two elements are the numbers of lines and columns.
+            The remaining ones are the contents of each cell, from left to right then from top to bottom
             (m, n, state[0][0], state[0][1], ..., state[0][n], state[1][0], state[1][1], ..., state[1][n - 1], ...
             state[m - 1][0], state[m - 1][1], ..., state[m - 1][n - 1])
         """
@@ -205,7 +205,7 @@ class Grid:
         -----------
         file_name: Tuple[int, ...]
             The representation of a grid. The first two elements are the numbers of lines and columns.
-            The remaining ones are the contents of each cell, from the left to the right then from top to bottom
+            The remaining ones are the contents of each cell, from left to right then from top to bottom
             (state[0][0], state[0][1], ..., state[0][n], state[1][0], state[1][1], ..., state[1][n - 1], ...
             state[m - 1][0], state[m - 1][1], ..., state[m - 1][n - 1])
 

@@ -15,7 +15,7 @@ MAX_LENGTH = 50
 
 class NaiveSolver:
     """
-    A class to represent solvers which doesn't use an heuristic.
+    A class to represent solvers which don't use an heuristic.
     """
 
     def __init__(self, name="") -> None:

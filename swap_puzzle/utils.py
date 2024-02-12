@@ -3,6 +3,7 @@ from grid import Grid
 import heapq
 import bisect
 import random
+import math
 
 
 def sign(x: float) -> int:
@@ -50,7 +51,7 @@ def reconstruct_path(
     Parameter:
     ----------
     path: List[Tuple[int, ...]]
-        A list of grids as tuple representations. The function assumes that for each
+        A list of grids as tuple representations. The function assumes that each
         grid of the list can be obtained by making an allowed swap on the previous one.
 
     Output:
@@ -84,7 +85,7 @@ def reconstruct_path(
 def halved_manhattan_distance(grid: Tuple[int, ...]) -> float:
     """
     Compute the half sum of the Manhattan distances (also known as L1 distance on R^2)
-    between each the cell occupied by each number in a given grid and the cell it
+    between the cell occupied by each number in a given grid and the cell it
     should occupy in the sorted grid. It can be shown that this function is a
     monotone (and thus admissible) heuristic.
 
@@ -109,6 +110,30 @@ def halved_manhattan_distance(grid: Tuple[int, ...]) -> float:
                 (grid[i * n + j + 2] - 1) % n - j
             )
     return sum_manhattan / 2
+
+
+def generate_grid(m,n,a,b): 
+    "m = Number of lines"
+    "n = Number of columns"
+    "[a,b] = interval of difficulty, between 0 and 1"
+
+    "generate the grid sorted by decreasing order, assuming it represents the maximal distance from"
+    "the grid sorted by increasing order"
+    maxgrid = [m, n]
+    t = m*n
+    for k in range(t, 0, -1):
+        maxgrid.append(k)
+    dmax = halved_manhattan_distance(maxgrid)
+    
+    grid = Grid(m, n)
+    mini,maxi = math.ceil(a*dmax),math.floor(b*dmax)   #interval of distance
+    k = random.randint(mini,maxi)   #level of difficulty within this interval
+
+    swaps=Grid.all_swaps(m,n)
+    while halved_manhattan_distance(grid.to_tuple()) !=k:
+        grid.swap(*random.choice(swaps))
+
+    return grid
 
 
 class SortedList:
