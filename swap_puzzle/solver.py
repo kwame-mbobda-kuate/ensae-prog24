@@ -142,6 +142,18 @@ class BFSSolver(NaiveSolver):
                 utils.make_swap(L, swap)
         return node[1]
 
+class BubbleSortSolver(NaiveSolver):
+   def solve(self, grid: Grid) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
+    "Implementing a solver using the bubble sort, derived from"
+    "https://en.wikipedia.org/wiki/Bubble_sort"
+
+    m, n = grid.m, grid.n
+    l = m*n
+    swapped = False
+    for i in range(l):
+        if grid[i+1] > grid(i+2):
+            Grid.swap(grid[i+1], grid[i+2])
+    
 
 class AStarSolver(HeuristicSolver):
 
