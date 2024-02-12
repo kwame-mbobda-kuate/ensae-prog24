@@ -25,10 +25,10 @@ def aa_filled_rounded_rect(
     rect: pygame.Rectangle
         The rectangle to draw.
     color: pygame.Color
-        The color to fll the rectangle with.
+        The color to fill in the rectangle.
     radius: float
         The ratio of the radius of the circle with the shortest side of the rectangle.
-        Must be comprised between 0 and 1.
+        Must be between 0 and 1.
 
     Output:
     -------

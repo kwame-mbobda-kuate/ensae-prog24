@@ -48,7 +48,7 @@ def reconstruct_path(
     Parameter:
     ----------
     path: List[Tuple[int, ...]]
-        A list of grids as tuple representations. The function assumes that for each
+        A list of grids as tuple representations. The function assumes that each
         grid of the list can be obtained by making an allowed swap on the previous one.
 
     Output:
@@ -82,7 +82,7 @@ def reconstruct_path(
 def halved_manhattan_distance(grid: Tuple[int, ...]) -> float:
     """
     Compute the half sum of the Manhattan distances (also known as L1 distance on R^2)
-    between each the cell occupied by each number in a given grid and the cell it
+    between the cell occupied by each number in a given grid and the cell it
     should occupy in the sorted grid. It can be shown that this function is a
     monotone (and thus admissible) heuristic.
 
