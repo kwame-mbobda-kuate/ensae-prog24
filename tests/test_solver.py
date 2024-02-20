@@ -12,6 +12,7 @@ solvers = [
     solver.GreedySolver("Naive Solver"),
     solver.NaiveBFSSolver("Naive BFS solver"),
     solver.BFSSolver("BFS Solver"),
+    solver.OptimizedBFSSolver("Optimized BFS Solver"),
     solver.AStarSolver(
         utils.halved_manhattan_distance, "A* Solver with Manhattan heuristic"
     ),
