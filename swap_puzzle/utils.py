@@ -217,6 +217,19 @@ def remove_from_heapq(heap, val):
         heap.pop(i)
         heapq.heapify(heap)
 
+class BubbleSortSolver(NaiveSolver):
+   def solve(self, grid: Grid) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
+    "Implementing a solver using the bubble sort, derived from"
+    "https://en.wikipedia.org/wiki/Bubble_sort"
+
+    m, n = grid.m, grid.n
+    l = m*n
+    swapped = False
+    for i in range(l):
+        if grid[i+1] > grid(i+2):
+            Grid.swap(grid[i+1], grid[i+2])
+    
+
 
 def full_linear_conflict(grid: "Grid") -> float:
     """
