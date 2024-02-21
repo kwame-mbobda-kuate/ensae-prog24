@@ -217,19 +217,6 @@ def remove_from_heapq(heap, val):
         heap.pop(i)
         heapq.heapify(heap)
 
-class BubbleSortSolver(NaiveSolver):
-   def solve(self, grid: Grid) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
-    "Implementing a solver using the bubble sort, derived from"
-    "https://en.wikipedia.org/wiki/Bubble_sort"
-
-    m, n = grid.m, grid.n
-    l = m*n
-    swapped = False
-    for i in range(l):
-        if grid[i+1] > grid(i+2):
-            Grid.swap(grid[i+1], grid[i+2])
-    
-
 
 def full_linear_conflict(grid: "Grid") -> float:
     """
@@ -308,3 +295,16 @@ def inverse(grid: Tuple[int, ...]) -> Tuple[int, ...]:
     for i in range(grid[0] * grid[1]):
         inv_grid[grid[i + 2] + 1] = i
     return tuple(inv_grid)
+
+
+def inversions(grid: Tuple[int, ...]) -> int:
+    """
+    Computes the number of inversions of a grid by considering it as a permutation.
+    It is equal to the length to an optimal solution if the size of the grid is 1 x n.
+    """
+    nb_inv = 0
+    for i in range(2, grid[0] * grid[1]):
+        for j in range(2, i):
+            if grid[i] < grid[j]:
+                nb_inv += 1
+    return nb_inv

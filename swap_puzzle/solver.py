@@ -199,18 +199,21 @@ class OptimizedBFSSolver(NaiveSolver):
                     return (path + seen[sym])[::-1]
                 utils.make_swap(L, swap)
 
-class BubbleSortSolver(NaiveSolver):
-   def solve(self, grid: Grid) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
-    "Implementing a solver using the bubble sort, derived from"
-    "https://en.wikipedia.org/wiki/Bubble_sort"
 
-    m, n = grid.m, grid.n
-    l = m*n
-    swapped = False
-    for i in range(l):
-        if grid[i+1] > grid(i+2):
-            Grid.swap(grid[i+1], grid[i+2])
-    
+class BubbleSortSolver(NaiveSolver):
+    """Solves a grid of size 1 x n by performing a bubble sort."""
+
+    def solve(self, grid: Grid) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
+        cpy = copy.deepcopy(grid)
+        n = grid.n
+        swaps = []
+        for i in range(n - 1, 0, -1):
+            for j in range(i):
+                if cpy.state[0][j + 1] < cpy.state[0][j]:
+                    swaps.append(((0, j), (0, j + 1)))
+                    cpy.swap((0, j), (0, j + 1))
+        return swaps
+
 
 class AStarSolver(HeuristicSolver):
 
@@ -288,8 +291,8 @@ class MMUCe:
 
     def choose_direction(
         self,
-        open_sets: List["set", "set"],
-        pr_queues: List[List, List],
+        open_sets: List["set"],
+        pr_queues: List[List],
         U: float,
         last_direction: int,
         changed: bool,
