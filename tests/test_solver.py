@@ -14,7 +14,7 @@ solvers = [
     solver.BFSSolver("BFS Solver"),
     solver.OptimizedBFSSolver("Optimized BFS Solver"),
     solver.AStarSolver(
-        utils.halved_manhattan_distance, "A* Solver with Manhattan heuristic"
+        utils.half_manhattan_distance, "A* Solver with Manhattan heuristic"
     ),
 ]
 fast_and_exact_solvers = solvers[2:]

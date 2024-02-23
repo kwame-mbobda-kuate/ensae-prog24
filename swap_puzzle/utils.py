@@ -103,7 +103,7 @@ def general_halved_manhattan_distance(target: Tuple[int, ...]):
     return aux
 
 
-def halved_manhattan_distance(grid: Tuple[int, ...]) -> float:
+def half_manhattan_distance(grid: Tuple[int, ...]) -> float:
     """
     Compute the half sum of the Manhattan distances (also known as L1 distance on R^2)
     between the cell occupied by each number in a given grid and the cell it
@@ -150,7 +150,7 @@ def generate_grid(m: int, n: int, a: float, b: float) -> "Grid":
         A grid whose difficulty is contained in a given interval.
     """
     reversed_grid = [m, n] + [*range(m * n, 0, -1)]
-    max_distance = halved_manhattan_distance(reversed_grid)
+    max_distance = half_manhattan_distance(reversed_grid)
     # The reversed grid is the furthest grid from the sorted grid.
 
     grid = Grid(m, n)
@@ -160,7 +160,7 @@ def generate_grid(m: int, n: int, a: float, b: float) -> "Grid":
     k = random.randint(mini, maxi)  # level of difficulty within this interval
 
     swaps = Grid.all_swaps(m, n)
-    while halved_manhattan_distance(grid.to_tuple()) != k:
+    while half_manhattan_distance(grid.to_tuple()) != k:
         grid.swap(*random.choice(swaps))
 
     return grid
@@ -218,7 +218,7 @@ def remove_from_heapq(heap, val):
         heapq.heapify(heap)
 
 
-def full_linear_conflict(grid: "Grid") -> float:
+def linear_conflict(grid: "Grid") -> float:
     """
     An attempt to mimic the Linear Conflict heuristic used in the
     (n^2-1)-puzzle. See https://mice.cs.columbia.edu/getTechreport.php?techreportID=1026&format=pdf&
@@ -272,7 +272,7 @@ def full_linear_conflict(grid: "Grid") -> float:
             for k in range(m):
                 if C[k]:
                     C[k] -= 1
-        return lc + halved_manhattan_distance(grid)
+        return lc + half_manhattan_distance(grid)
 
 
 def compose(grid1: Tuple[int, ...], grid2: Tuple[int, ...]) -> Tuple[int, ...]:

@@ -1,3 +1,5 @@
 **/swap_puzzle/__pycache__
 **/.vscode
-**/pdb
+**/apdb
+**/gadb
+**/swap_puzzle/test.py
