@@ -115,7 +115,7 @@ def gadb_heuristic(m: int, n: int, gadbs):
                 if el in db:
                     graph.append((db[el], k, el))
         # Solving the maximum weight matching in an hypergraph using a greedy algorithm
-        graph.sort(reverse=True)
+        graph.sort(key=lambda j: j[0] / j[1], reverse=True)
         weight = 0
         vertices = []
         i = 0
@@ -126,7 +126,7 @@ def gadb_heuristic(m: int, n: int, gadbs):
                 vertices.extend(new_vertices)
                 weight += w
             i += 1
-        return weight + utils.half_manhattan_distance(grid)
+        return weight / 2 + utils.half_manhattan_distance(grid)
 
     return heuristic
 

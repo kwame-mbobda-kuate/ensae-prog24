@@ -11,7 +11,7 @@ import math
 
 FWD = 0
 BWD = 1
-MAX_LENGTH = 50
+MAX_LENGTH = 1000
 
 
 class NaiveSolver:
@@ -147,7 +147,7 @@ class BFSSolver(NaiveSolver):
                 utils.make_swap(L, swap)
         if debug:
             print(f"{self.name}: {nb_nodes} nodes expanded")
-        return path
+        return node[1]
 
 
 class OptimizedBFSSolver(NaiveSolver):
@@ -217,7 +217,7 @@ class BubbleSortSolver(NaiveSolver):
 
 class AStarSolver(HeuristicSolver):
 
-    def solve(self, grid: Grid) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
+    def solve(self, grid: Grid, debug = False) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
         """
         Compute an optimal solution by using the A* algorithm.
         """
@@ -242,6 +242,8 @@ class AStarSolver(HeuristicSolver):
                     path.append(parent)
                     parent = closed_set[parent]
                 path.reverse()
+                if debug:
+                    print(next(counter))
                 return utils.reconstruct_path(path)
             if node in closed_set:
                 continue
@@ -387,7 +389,8 @@ class MMUCe:
             dir = self.choose_direction(open_sets, pr_queues, U, dir, changed)
             changed = False
             _, _, _, node = heapq.heappop(pr_queues[dir])
-            open_sets[dir].remove(node)
+            if node in open_sets:
+                open_sets[dir].remove(node)
             g_queues[dir].remove(node)
             f_queues[dir].remove(node)
             closed_sets[dir].add(node)

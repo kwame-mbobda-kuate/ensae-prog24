@@ -308,3 +308,6 @@ def inversions(grid: Tuple[int, ...]) -> int:
             if grid[i] < grid[j]:
                 nb_inv += 1
     return nb_inv
+
+
+half_sum = lambda x: sum(x) / 2
