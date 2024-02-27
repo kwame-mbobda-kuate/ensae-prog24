@@ -20,18 +20,17 @@ def are_disjoint(l1, l2):
     return True
 
 
-def half_manhattan_distance(m: int, n: int, grid: Tuple[int, ...]) -> float:
+def half_manhattan_distance(length: int, n: int, grid: Tuple[int, ...]) -> float:
     """
     Compute the half sum of the Manhattan distances between the cell occupied by each number
     in a given grid and the cell it should occupy in the sorted grid.
     The representation used here is different from the usual one.
     """
-    N = len(grid) // 2
     return (
         sum(
-            abs(((grid[i + N] - 1) % n - (grid[i] % n)))
-            + abs((grid[i + N] - 1) // n - grid[i] // n)
-            for i in range(N)
+            abs(((grid[i + length] - 1) % n - (grid[i] % n)))
+            + abs((grid[i + length] - 1) // n - grid[i] // n)
+            for i in range(length)
         )
         / 2
     )
@@ -70,81 +69,97 @@ def get_neighbors(m: int, n: int, grid) -> Tuple[int, ...]:
     return neighbors
 
 
-def compute_gadb(m: int, n: int, k: int):
-    """
-    Computes a General Additive Database (or also called dynamically-partitionned database)
-    as described in https://arxiv.org/pdf/1107.0050.pdf. This functions finds all
-    the k-uplets of tiles whose distance is superior than their half Mahnattan distance.
-    """
-    database = dict()
-    # Format used: {grid: distance}
-    for comb in itertools.combinations(range(m * n), k):
-        comb = list(comb)
-        src = comb + [i + 1 for i in comb]
-        # Format used: (i1, i2, ..., ik, j1, j2, ..., jk)
-        # where (j1, j2, ..., jk) are the numbers of the tiles
-        # considered and (i1, i2, ..., ik) their respective
-        # positions
-        src = tuple(src)
-        queue = collections.deque([(src, 0)])
-        seen = set([src])
-        while queue:
-            node, d = queue.pop()
-            if d > half_manhattan_distance(m, n, node):
-                database[node] = d - half_manhattan_distance(m, n, node)
-                # We only store the difference between the two distances
-            for neighbor in get_neighbors(m, n, node):
-                if neighbor not in seen:
-                    seen.add(neighbor)
-                    queue.appendleft((neighbor, d + 1))
-    return database
+class GADB:
+
+    def __init__(self, m: int, n: int, k: int, gadb: Dict[Tuple[int, ...], float] = {}):
+        self.m = m
+        self.n = n
+        self.k = k
+        self.gadb = gadb
+
+    def compute(self):
+        """
+        Computes a General Additive Database (or also called dynamically-partitionned database)
+        as described in https://arxiv.org/pdf/1107.0050.pdf. This functions finds all
+        the k-uplets of tiles whose distance is superior than their half Mahnattan distance.
+        """
+        self.gadb = dict()
+        # Format used: {grid: distance}}
+        for comb in itertools.combinations(range(self.m * self.n), self.k):
+            comb = list(comb)
+            src = comb + [i + 1 for i in comb]
+            # Format used: (i1, i2, ..., ik, j1, j2, ..., jk)
+            # where (j1, j2, ..., jk) are the numbers of the tiles
+            # considered and (i1, i2, ..., ik) their respective
+            # positions
+            src = tuple(src)
+            queue = collections.deque([(src, 0)])
+            seen = set([src])
+            while queue:
+                node, d = queue.pop()
+                half_m = half_manhattan_distance(self.k, self.n, node)
+                if d > half_m:
+                    self.gadb[node] = d - half_m
+                    # We only store the difference between the two distances
+                for neighbor in get_neighbors(self.m, self.n, node):
+                    if neighbor not in seen:
+                        seen.add(neighbor)
+                        queue.appendleft((neighbor, d + 1))
+
+    @staticmethod
+    def get_filename(m: int, n: int, k: int) -> str:
+        """
+        Gives a generic filename for storing APDBs.
+        """
+        return f"gadb\\{m} x {n}, {k}"
+
+    def save(self, filename="") -> None:
+        if not self.gadb:
+            self.compute
+        filename = filename or GADB.get_filename(self.m, self.n, self.k)
+        with open(filename, "wb") as f:
+            f.write(gzip.compress(pickle.dumps(self)))
+
+    @classmethod
+    def load(cls, filename) -> "GADB":
+        with open(filename, "rb") as f:
+            return pickle.loads(gzip.decompress(f.read()))
+
+    @classmethod
+    def default_load(cls, m: int, n: int, k: int) -> "GADB":
+        return GADB.load(GADB.get_filename(m, n, k))
 
 
-def gadb_heuristic(m: int, n: int, gadbs):
-    """
-    Returns an heuristic using the GADBs.
-    """
+class GADBList:
 
-    def heuristic(grid):
+    def __init__(self, gabds: List["GADB"]) -> None:
+        self.gadbs = gabds
+
+    def heuristic(self, grid: Tuple[int, ...]) -> float:
+        """
+        Returns an heuristic using the GADBs.
+        """
+        m, n = grid[0], grid[1]
         graph = []
-        for db in gadbs:
-            k, db = db
-            for comb in itertools.combinations(range(m * n), k):
+        for gadb in self.gadbs:
+            for comb in itertools.combinations(range(m * n), gadb.k):
                 comb = [*comb]
                 el = tuple(comb + [grid[i + 2] for i in comb])
-                if el in db:
-                    graph.append((db[el], k, el))
+                if el in gadb.gadb:
+                    graph.append((gadb.gadb[el], gadb.k, el))
         # Solving the maximum weight matching in an hypergraph using a greedy algorithm
         graph.sort(key=lambda j: j[0] / j[1], reverse=True)
         weight = 0
-        vertices = []
+        vertices = set()
         i = 0
         while len(vertices) < m * n and i < len(graph):
             w, k, el = graph[i]
-            new_vertices = el[k:]
-            if are_disjoint(vertices, new_vertices):
-                vertices.extend(new_vertices)
+            new_vertices = set(el[k:])
+            if vertices.isdisjoint(new_vertices):
+                vertices |= new_vertices
                 weight += w
             i += 1
         return weight / 2 + utils.half_manhattan_distance(grid)
 
-    return heuristic
-
-
-def get_filename(m: int, n: int, k: int) -> str:
-    """
-    Gives a generic filename for storing APDBs.
-    """
-    return f"gadb\\{m} x {n}, {k}"
-
-
-def save_gadb(m: int, n: int, k: int, filename=""):
-    db = compute_gadb(m, n, k)
-    filename = filename or get_filename(m, n, k)
-    with open(filename, "wb") as f:
-        f.write(gzip.compress(pickle.dumps(db)))
-
-
-def load_gadb(filename):
-    with open(filename, "rb") as f:
-        return pickle.loads(gzip.decompress(f.read()))
+    def get_heuristic(self) -> Callable[[Tuple[int, ...]], float]:
+        return lambda grid: self.heuristic(grid)

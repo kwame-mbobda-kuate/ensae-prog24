@@ -14,7 +14,7 @@ class APDB:
     described in https://arxiv.org/pdf/1107.0050.pdf.
     """
 
-    def __init__(self, m: int, n: int, group: Tuple[int, ...], apdb: Any) -> None:
+    def __init__(self, m: int, n: int, group: Tuple[int, ...], apdb: Any = None) -> None:
         """
         Parameters:
         -----------
@@ -117,6 +117,8 @@ class ArrayAPDB(APDB):
         """
         Generates and saves an APDB.
         """
+        if not self.apdb:
+            self.compute()
         filename = filename or ArrayAPDB.default_filename(self.m, self.n, self.group)
         np.savez_compressed(
             filename, apdb=self.apdb, m=self.m, n=self.n, group=self.group
@@ -168,6 +170,8 @@ class DictAPDB(APDB):
         self.apdb = {self.mapping(grid): d for grid, d in self.apdb.items()}
 
     def save(self, filename="") -> None:
+        if not self.apdb:
+            self.compute()
         filename = filename or DictAPDB.default_filename(self.m, self.n, self.group)
         with open(filename, "wb") as f:
             f.write(gzip.compress(pickle.dumps(self)))

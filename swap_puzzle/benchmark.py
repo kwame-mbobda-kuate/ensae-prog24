@@ -4,7 +4,7 @@ import grid
 import gadb
 import utils
 from apdb import DictAPDB
-import apdb
+from gadb import GADB
 
 
 def benchmark(solvers, m, n, N):
@@ -17,3 +17,11 @@ def benchmark(solvers, m, n, N):
         for grid_ in grids:
             solver.solve(grid_, debug=False)
         print(f"{solver} : {((time.perf_counter() - t1) / N):.4f} seconds")
+
+gadb3 = GADB.default_load(4, 4, 3)
+gadb2 = GADB.default_load(4, 4, 2)
+h1 = gadb.GADBList([gadb2, gadb3]).get_heuristic()
+h2 = utils.half_manhattan_distance
+s1 = solver.AStarSolver(h1, "GADB")
+s2 = solver.AStarSolver(h2, "MD")
+benchmark([s1, s2], 4, 4, 10)

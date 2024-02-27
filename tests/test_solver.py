@@ -8,7 +8,10 @@ from grid import Grid
 import solver
 import utils
 from apdb import DictAPDB
+from gadb import GADB
+import gadb
 import apdb
+
 
 solvers = [
     solver.GreedySolver("Naive Solver"),
@@ -17,6 +20,7 @@ solvers = [
     solver.AStarSolver(
         utils.half_manhattan_distance, "A* Solver with Manhattan heuristic"
     ),
+    solver.AStarSolver(gadb.GADBList([GADB.default_load(3, 3, 3), GADB.default_load(3, 3, 2)]).get_heuristic(), "GADB")
     #solver.AStarSolver(apdb.APDBList(utils.half_sum, [apdb.ArrayAPDB.default_load(3, 3, g) for g in [(1, 2, 3), (4, 5, 6), (7, 8, 9)]]).get_heuristic(), "DictAPDB")
 ]
 fast_and_exact_solvers = solvers[2:]
