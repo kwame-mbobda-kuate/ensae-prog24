@@ -261,7 +261,7 @@ class Grid:
         for i in range(m):
             for j in range(n):
                 if i < m - 1:
-                    swaps.append([(i, j), (i + 1, j)])
+                    swaps.append(((i, j), (i + 1, j)))
                 if j < n - 1:
-                    swaps.append([(i, j), (i, j + 1)])
+                    swaps.append(((i, j), (i, j + 1)))
         return swaps

@@ -17,10 +17,11 @@ solvers = [
     solver.GreedySolver("Naive Solver"),
     solver.NaiveBFSSolver("Naive BFS solver"),
     solver.BFSSolver("BFS Solver"),
+    solver.BidirectionalBFSSolver("Bidirectional BFS Solver"),
     solver.AStarSolver(
         utils.half_manhattan_distance, "A* Solver with Manhattan heuristic"
     ),
-    solver.AStarSolver(gadb.GADBList([GADB.default_load(3, 3, 3), GADB.default_load(3, 3, 2)]).get_heuristic(), "GADB")
+    #solver.AStarSolver(gadb.GADBList([GADB.default_load(3, 3, 3), GADB.default_load(3, 3, 2)]).get_heuristic(), "GADB")
     #solver.AStarSolver(apdb.APDBList(utils.half_sum, [apdb.ArrayAPDB.default_load(3, 3, g) for g in [(1, 2, 3), (4, 5, 6), (7, 8, 9)]]).get_heuristic(), "DictAPDB")
 ]
 fast_and_exact_solvers = solvers[2:]

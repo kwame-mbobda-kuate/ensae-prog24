@@ -14,7 +14,9 @@ class APDB:
     described in https://arxiv.org/pdf/1107.0050.pdf.
     """
 
-    def __init__(self, m: int, n: int, group: Tuple[int, ...], apdb: Any = None) -> None:
+    def __init__(
+        self, m: int, n: int, group: Tuple[int, ...], apdb: Any = None
+    ) -> None:
         """
         Parameters:
         -----------

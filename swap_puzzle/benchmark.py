@@ -4,6 +4,7 @@ import grid
 import gadb
 import utils
 from apdb import DictAPDB
+import apdb
 from gadb import GADB
 
 
@@ -13,15 +14,14 @@ def benchmark(solvers, m, n, N):
     """
     grids = [grid.Grid.random_grid(m, n) for _ in range(N)]
     for solver in solvers:
+        nb_nodes = 0
         t1 = time.perf_counter()
         for grid_ in grids:
-            solver.solve(grid_, debug=False)
-        print(f"{solver} : {((time.perf_counter() - t1) / N):.4f} seconds")
+            nb_nodes += solver.solve(grid_, debug=True)["nb_nodes"]
+        print(f"{solver} : {((time.perf_counter() - t1) / N):.4f} seconds, {nb_nodes / N} expanded")
 
-gadb3 = GADB.default_load(4, 4, 3)
-gadb2 = GADB.default_load(4, 4, 2)
-h1 = gadb.GADBList([gadb2, gadb3]).get_heuristic()
-h2 = utils.half_manhattan_distance
-s1 = solver.AStarSolver(h1, "GADB")
-s2 = solver.AStarSolver(h2, "MD")
-benchmark([s1, s2], 4, 4, 10)
+s1 = solver.BidirectionalBFSSolver("Bidirectional BFS Solver")
+s2 = solver.BFSSolver("BFS Solver")
+s3 = solver.AStarSolver(utils.half_manhattan_distance, "A* Solver with MD")
+s4 = solver.AStarSolver(apdb.APDBList(lambda x: x[0], [DictAPDB.default_load(3, 3, [*range(1, 10)])]).get_heuristic(), "A* Solver with APDB")
+benchmark([s1, s2, s3, s4], 3, 3, 10)

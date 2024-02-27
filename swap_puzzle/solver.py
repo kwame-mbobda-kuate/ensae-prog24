@@ -123,31 +123,77 @@ class BFSSolver(NaiveSolver):
         [((i1, j1), (i2, j2)), ((i1', j1'), (i2', j2')), ...].
         """
         m, n = grid.m, grid.n
-        nb_nodes = 0
         all_swaps = Grid.all_swaps(m, n)
         src = grid.to_tuple()
         dst = Grid(m, n).to_tuple()
-        seen = set([src])
-        queue = collections.deque([(src, [])])
+        explored = {src: (None, None)}
+        queue = collections.deque([src])
+        nb_nodes = 1
         # The element of the queue are of the form (Tuple[int, ...], List[Tuple[Tuple[int, int], Tuple[int, int]]])
         # where the first element is tuple representation of a grid and the second the swaps needed to obtain it
         # starting from src.
-        node = None
-        while queue and (node is None or node[0] != dst):
+        while queue:
             node = queue.pop()
-            L = list(node[0])
+            if node == dst:
+                path = []
+                while explored[node][0]:
+                    path.append(explored[node][1])
+                    node = explored[node][0]
+                path.reverse()
+                if debug:
+                    return {"path": path, "nb_nodes": nb_nodes}
+                return path
+            L = list(node)
             for swap in all_swaps:
                 utils.make_swap(L, swap)
                 cpy = tuple(L)
-                if cpy not in seen:
+                if cpy not in explored:
                     nb_nodes += 1
-                    path = node[1] + [swap]
-                    queue.appendleft((cpy, path))
-                    seen.add(cpy)
+                    queue.appendleft(cpy)
+                    explored[cpy] = (node, swap)
                 utils.make_swap(L, swap)
-        if debug:
-            print(f"{self.name}: {nb_nodes} nodes expanded")
-        return node[1]
+
+
+class BidirectionalBFSSolver(NaiveSolver):
+
+    def solve(
+        self, grid: Grid, debug: bool = False
+    ) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
+
+        m, n = grid.m, grid.n
+        all_swaps = Grid.all_swaps(m, n)
+        src = grid.to_tuple()
+        dst = Grid(m, n).to_tuple()
+        nb_nodes = 0
+        explored = [{src: (None, None)}, {dst: (None, None)}]
+        queues = [collections.deque([src]), collections.deque([dst])]
+        dir = FWD
+        while queues[dir]:
+            node = queues[dir].pop()
+            if node in explored[1 - dir]:
+                cpy = node
+                path = []
+                while explored[FWD][node][0]:
+                    path.append(explored[FWD][node][1])
+                    node = explored[FWD][node][0]
+                path.reverse()
+                node = cpy
+                while explored[BWD][node][0]:
+                    path.append(explored[BWD][node][1])
+                    node = explored[BWD][node][0]
+                if debug:
+                    return {"path": path, "nb_nodes": nb_nodes}
+                return path
+            L = list(node)
+            for swap in all_swaps:
+                utils.make_swap(L, swap)
+                cpy = tuple(L)
+                if cpy not in explored[dir]:
+                    nb_nodes += 1
+                    queues[dir].appendleft(cpy)
+                    explored[dir][cpy] = (node, swap)
+                utils.make_swap(L, swap)
+            dir = 1 - dir
 
 
 class OptimizedBFSSolver(NaiveSolver):
@@ -217,7 +263,9 @@ class BubbleSortSolver(NaiveSolver):
 
 class AStarSolver(HeuristicSolver):
 
-    def solve(self, grid: Grid, debug = False) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
+    def solve(
+        self, grid: Grid, debug=False
+    ) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
         """
         Compute an optimal solution by using the A* algorithm.
         """
@@ -243,7 +291,7 @@ class AStarSolver(HeuristicSolver):
                     parent = closed_set[parent]
                 path.reverse()
                 if debug:
-                    print(next(counter))
+                    return {"nb_nodes": next(counter) - 1, "path": path}
                 return utils.reconstruct_path(path)
             if node in closed_set:
                 continue
