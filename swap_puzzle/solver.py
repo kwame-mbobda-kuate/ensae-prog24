@@ -223,17 +223,18 @@ class OptimizedBFSSolver(NaiveSolver):
             L = list(node)
             for swap in all_swaps:
                 utils.make_swap(L, swap)
-                cpy = tuple(L)
+                neighbor = tuple(L)
+                utils.make_swap(L, swap)
                 path = seen[node] + [swap]
-                if cpy == src:
+                if neighbor == src:
                     if debug:
                         print(f"{self.name}: {nb_nodes} nodes expanded")
                     return path[::-1]
-                if cpy not in seen:
+                if neighbor not in seen:
                     nb_nodes += 1
-                    queue.appendleft(cpy)
-                    seen[cpy] = path
-                sym = utils.compose(inv, cpy)
+                    queue.appendleft(neighbor)
+                    seen[neighbor] = path
+                sym = utils.compose(inv, neighbor)
                 # We know a path from dst to cpy
                 # Finding a path from cpy to src
                 # amounts to finding a path from
@@ -242,8 +243,7 @@ class OptimizedBFSSolver(NaiveSolver):
                 if sym in seen:
                     if debug:
                         print(f"{self.name}: {nb_nodes} nodes expanded")
-                    return (path + seen[sym])[::-1]
-                utils.make_swap(L, swap)
+                    return (path + seen[sym])[::-1]        
 
 
 class BubbleSortSolver(NaiveSolver):
@@ -270,33 +270,30 @@ class AStarSolver(HeuristicSolver):
         Compute an optimal solution by using the A* algorithm.
         """
         counter = itertools.count()
-        open_set, closed_set = dict(), dict()
-        # closed_set contains the parent from which we discovered the node
-        # open_set contains (heuristic + distance, distance known)
-        #                    (f, g)
         src = grid.to_tuple()
         dst = Grid(grid.m, grid.n).to_tuple()
         all_swaps = Grid.all_swaps(grid.m, grid.n)
-        queue = [(0, -next(counter), src, 0, None)]
-        # [(heuristic + distance, index, node, distance, father)]
+        open_set, closed_set = {src: (0, self.heuristic(src))}, {src: None}
+        # closed_set contains the parent from which we discovered the node
+        # open_set contains (distance known, heuristic + distance)
+        #                    (g, f)
+        queue = [(0, src)]
+        # [(heuristic + distance, index, node)]
         # index allows A* to work in a LIFO way across equal cost
-        # path
+        # paths
         heapq.heapify(queue)
         while queue:
-            _, _, node, node_g, parent = heapq.heappop(queue)
+            _, node = heapq.heappop(queue)
             if node == dst:
-                path = [node]
-                while parent:
-                    path.append(parent)
-                    parent = closed_set[parent]
+                path = []
+                while node:
+                    path.append(node)
+                    node = closed_set[node]
                 path.reverse()
                 if debug:
                     return {"nb_nodes": next(counter) - 1, "path": path}
                 return utils.reconstruct_path(path)
-            if node in closed_set:
-                continue
-            closed_set[node] = parent
-            tentative_g = node_g + 1
+            tentative_g = open_set[node][0] + 1
             list_ = list(node)
             for swap in all_swaps:
                 utils.make_swap(list_, swap)
@@ -313,9 +310,10 @@ class AStarSolver(HeuristicSolver):
                 open_set[neighbor] = tentative_g, move_h
                 heapq.heappush(
                     queue,
-                    (move_h + tentative_g, -next(counter), neighbor, tentative_g, node),
+                    (move_h + tentative_g,  neighbor),
                 )
-
+                next(counter)
+                closed_set[neighbor] = node
 
 class MMUCe:
     """

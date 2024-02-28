@@ -115,7 +115,7 @@ class GADB:
 
     def save(self, filename="") -> None:
         if not self.gadb:
-            self.compute
+            self.compute()
         filename = filename or GADB.get_filename(self.m, self.n, self.k)
         with open(filename, "wb") as f:
             f.write(gzip.compress(pickle.dumps(self)))

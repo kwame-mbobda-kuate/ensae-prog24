@@ -311,3 +311,13 @@ def inversions(grid: Tuple[int, ...]) -> int:
 
 
 half_sum = lambda x: sum(x) / 2
+
+def vertical_symmetry(m: int, n:int):
+    grid = [0]*m*n
+    for i in range(m):
+        for j in range(n):
+            grid[n*i + j] = n*(n  - 1 - i) + j + 1
+    return tuple([m, n] + grid)
+
+if __name__ == "__main__":
+    print(vertical_symmetry(4, 4))

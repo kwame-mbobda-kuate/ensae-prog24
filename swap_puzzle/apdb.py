@@ -3,6 +3,7 @@ import pickle
 import numpy as np
 import utils
 import gzip
+import utils
 import time
 from typing import List, Dict, Tuple, Callable, Any, Union
 import collections
@@ -189,6 +190,16 @@ class DictAPDB(APDB):
 
     def heuristic(self, grid: Tuple[int, ...]) -> int:
         return self.apdb[self.mapping(grid)]
+
+
+class SymmetryAPDB:
+
+    def __init__(self, apdb: "APDB", symmetry: Tuple[int, ...]):
+        self.apdb = apdb
+        self.symmetry = symmetry
+
+    def heuristic(self, grid: Tuple[int, ...]) -> int:
+        return self.apdb.heuristic(utils.compose(self.symmetry, grid))
 
 
 class APDBList:
