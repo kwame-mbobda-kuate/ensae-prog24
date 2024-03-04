@@ -11,7 +11,7 @@ import collections
 
 class APDB:
     """
-    An abstract to represent additive pattern database (APDB) for the swap puzzle as
+    An abstract class used to represent additive pattern database (APDB) for the swap puzzle as
     described in https://arxiv.org/pdf/1107.0050.pdf.
     """
 
@@ -34,40 +34,51 @@ class APDB:
         self.apdb = apdb
 
     def load(cls, filename: str) -> "APDB":
+        """
+        Loads an APDB stored.
+        """
         raise NotImplementedError
 
     def save(self, filename: str) -> None:
+        """
+        Saves an APDB.
+        """
         raise NotImplementedError
 
     def compute(self) -> None:
+        """
+        Computes the APDB.
+        """
         raise NotImplementedError
 
-    def heuristic(self, grid) -> float:
+    def heuristic(self, grid: Tuple[int, ...]) -> float:
+        """
+        Computes the heuristic value of a grid.
+        """
         raise NotImplementedError
 
+def representation(group: Tuple[int, ...], grid: Tuple[int, ...]) -> Tuple[int, ...]:
+    """
+    Computes the group representation of a grid.
+
+    Parameters:
+    -----------
+    grid: Tuple[int, ...]
+        The grid.
+
+    Output:
+    -------
+    tuple: Tuple[int, ...]
+        The group representation of the grid. It contains
+        the indices where the numbers of the pattern
+        groups are.
+    """
+    return tuple(grid.index(k, 2) - 2 for k in group)
 
 class ArrayAPDB(APDB):
     """
-    This class uses np.ndarray to store the databse.
+    An implementation of APDB using np.array.
     """
-
-    def mapping(self, grid: Tuple[int, ...]) -> Tuple[int, ...]:
-        """
-        Computes the group representation of a grid.
-
-        Parameters:
-        -----------
-        grid: Tuple[int, ...]
-            The grid.
-
-        Output:
-        -------
-        tuple: Tuple[int, ...]
-            The group representation of the grid. It contains
-            the indices where the numbers of the pattern
-            groups are.
-        """
-        return tuple(grid.index(k, 2) - 2 for k in self.group)
 
     def compute(self) -> None:
         self.apdb = np.zeros([self.m * self.n] * len(self.group), dtype=np.int8) - 1
@@ -79,7 +90,7 @@ class ArrayAPDB(APDB):
                 src[k] = -1
         src = tuple(src)
         all_swaps = Grid.all_swaps(self.m, self.n)
-        self.apdb[self.mapping(src)] = 0
+        self.apdb[representation(src)] = 0
         queue = collections.deque([(src, 0)])
         while queue:
             node, d = queue.pop()
@@ -93,16 +104,15 @@ class ArrayAPDB(APDB):
                     continue
                 # We don't consider a swap between two -1 tiles
                 utils.make_swap(L, swap)
-                cpy = tuple(L)
-                mapping = self.mapping(cpy)
-                if self.apdb[mapping] < 0:
-                    queue.appendleft((cpy, d + 1))
-                    self.apdb[mapping] = d + 1
+                neighbor = tuple(L)
                 utils.make_swap(L, swap)
+                repr = representation(neighbor)
+                if self.apdb[repr] < 0:
+                    queue.appendleft((neighbor, d + 1))
+                    self.apdb[repr] = d + 1
 
     @classmethod
     def load(cls, filename: str) -> "ArrayAPDB":
-
         with np.load(
             filename + (".npz" if not filename.endswith(".npz") else ""), "rb"
         ) as f:
@@ -117,9 +127,6 @@ class ArrayAPDB(APDB):
         return ArrayAPDB.load(ArrayAPDB.default_filename(m, n, group))
 
     def save(self, filename="") -> None:
-        """
-        Generates and saves an APDB.
-        """
         if not self.apdb:
             self.compute()
         filename = filename or ArrayAPDB.default_filename(self.m, self.n, self.group)
@@ -128,12 +135,12 @@ class ArrayAPDB(APDB):
         )
 
     def heuristic(self, grid) -> int:
-        return self.apdb[self.mapping(grid)]
+        return self.apdb[representation(grid)]
 
 
 class DictAPDB(APDB):
     """
-    This class uses a dictionnary to store the databse.
+    An implementation of APDB using dictionnaries.
     """
 
     def mapping(self, grid: Tuple[int, ...]) -> Tuple[int, ...]:
@@ -165,12 +172,12 @@ class DictAPDB(APDB):
                     continue
                 utils.make_swap(L, swap)
                 cpy = tuple(L)
+                utils.make_swap(L, swap)
                 if cpy not in self.apdb:
                     queue.appendleft(cpy)
                     self.apdb[cpy] = d + 1
-                utils.make_swap(L, swap)
         # The group representation is far more compact than the usual one
-        self.apdb = {self.mapping(grid): d for grid, d in self.apdb.items()}
+        self.apdb = {representation(grid): d for grid, d in self.apdb.items()}
 
     def save(self, filename="") -> None:
         if not self.apdb:
@@ -189,11 +196,13 @@ class DictAPDB(APDB):
         return DictAPDB.load(DictAPDB.default_filename(m, n, group))
 
     def heuristic(self, grid: Tuple[int, ...]) -> int:
-        return self.apdb[self.mapping(grid)]
+        return self.apdb[representation(grid)]
 
 
 class SymmetryAPDB:
-
+    """
+    Represents the result of a symmetry on a APDB.
+    """
     def __init__(self, apdb: "APDB", symmetry: Tuple[int, ...]):
         self.apdb = apdb
         self.symmetry = symmetry
@@ -204,7 +213,7 @@ class SymmetryAPDB:
 
 class APDBList:
     """
-    A class used to aggregate different APDBS
+    A class used to aggregate different APDBs.
     """
 
     def __init__(

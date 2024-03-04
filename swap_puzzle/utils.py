@@ -84,23 +84,57 @@ def reconstruct_path(
     return swaps
 
 
-def general_halved_manhattan_distance(target: Tuple[int, ...]):
+def general_half_manhattan_distance(grid1: Tuple[int, ...], grid2: Tuple[int, ...]):
     """
     Returns a function which computes the halved Manhattan distance
     from a target grid.
     """
-    m, n = target[0], target[1]
+    sum_manhattan = 0
+    m, n = grid1[0], grid1[1]
+    inv = inverse(grid2)
+    for i in range(m):
+        for j in range(n):
+            # grid[i * n + j + 2] is at
+            # ((grid[i * n + j + 2] - 1) // n,
+            #  (grid[i * n + j + 2] - 1) % n) in the sorted grid.
+            sum_manhattan += abs((inv[grid1[i * n + j + 2] + 1] - 1) // n - i) + abs(
+                (inv[grid1[i * n + j + 2] + 1] - 1) % n - j
+            )
+    return sum_manhattan / 2
 
-    def aux(grid):
-        sum_manhattan = 0
-        for i in range(m):
-            for j in range(n):
-                sum_manhattan += abs(
-                    (grid[i * n + j + 2] - target[i * n + j + 2]) // n
-                ) + abs((grid[i * n + j + 2] - target[i * n + j + 2]) % n)
-        return sum_manhattan / 2
 
-    return aux
+def update(
+    grid: Tuple[int, ...], swap: Tuple[Tuple[int, int], Tuple[int, int]]
+) -> float:
+    """
+    Computes the change in the Manhattan distance made by the swap.
+    """
+    m, n = grid[0], grid[1]
+    if swap[0][0] == swap[1][0]:
+        # Déplacement horizontal
+        dx_1 = sign((grid[swap[0][0] * n + swap[0][1] + 2] - 1) % n - swap[0][1])
+        if dx_1 == 0:
+            sign_1 = 1
+        else:
+            sign_1 = -sign(swap[1][1] - swap[0][1]) * dx_1
+        dx_2 = sign((grid[swap[1][0] * n + swap[1][1] + 2] - 1) % n - swap[1][1])
+        if dx_2 == 0:
+            sign_2 = 1
+        else:
+            sign_2 = -sign(swap[0][1] - swap[1][1]) * dx_2
+    if swap[0][1] == swap[1][1]:
+        # Déplacement vertical
+        dy_1 = sign((grid[swap[0][0] * n + swap[0][1] + 2] - 1) // n - swap[0][0])
+        if dy_1 == 0:
+            sign_1 = 1
+        else:
+            sign_1 = -sign(swap[1][0] - swap[0][0]) * dy_1
+        dy_2 = sign((grid[swap[1][0] * n + swap[1][1] + 2] - 1) // n - swap[1][0])
+        if dy_2 == 0:
+            sign_2 = 1
+        else:
+            sign_2 = -sign(swap[0][0] - swap[1][0]) * dy_2
+    return (sign_1 + sign_2) / 2
 
 
 def half_manhattan_distance(grid: Tuple[int, ...]) -> float:
@@ -133,7 +167,7 @@ def half_manhattan_distance(grid: Tuple[int, ...]) -> float:
     return sum_manhattan / 2
 
 
-def generate_grid(m: int, n: int, a: float, b: float) -> "Grid":
+def difficulty_bounded_grid(m: int, n: int, a: float, b: float) -> "Grid":
     """
     Generate randomly a grid whose difficulty is contained in a given interval.
 
@@ -166,115 +200,6 @@ def generate_grid(m: int, n: int, a: float, b: float) -> "Grid":
     return grid
 
 
-class SortedList:
-    """
-    A class which represents a bounded list which remains sorted after addition and deletion.
-    Its elements are (value, node) where value is a comparable item (in our case a float or integer)
-    and node an item (in our case a tuple).
-    """
-
-    def __init__(self, max_length, elements):
-        self.max_length = max_length
-        self.elements = [*sorted(elements)][:max_length]
-
-    def remove(self, node):
-        """
-        Removes the first element of the form (x, node) from the list.
-        """
-        i = 0
-        for element in self.elements:
-            if element[-1] == node:
-                break
-            i += 1
-        if i < len(self.elements):
-            self.elements.pop(i)
-
-    def min(self):
-        """
-        Returns the minimum of the list.
-        """
-        return self.elements[0][0]
-
-    def add(self, node, value):
-        """
-        Adds (value, node) to the list and keeps it sorted.
-        """
-        if self.elements and (value > self.elements[-1][0]):
-            return
-        if len(self.elements) == self.max_length:
-            self.elements.pop()
-        bisect.insort(self.elements, (value, node))
-
-
-def remove_from_heapq(heap, val):
-    """
-    Remove an element from an heapq.
-    """
-    for i, el in enumerate(heap):
-        if heap[-1] == val:
-            break
-    if i < len(heap):
-        heap.pop(i)
-        heapq.heapify(heap)
-
-
-def linear_conflict(grid: "Grid") -> float:
-    """
-    An attempt to mimic the Linear Conflict heuristic used in the
-    (n^2-1)-puzzle. See https://mice.cs.columbia.edu/getTechreport.php?techreportID=1026&format=pdf&
-    page 15 for the pseudo-code for the original implementation.
-    The idea of this function comes from the fact that the manhattan distance isn't an admissible heuristic,
-    we have to halve it because somes moves make two different tiles closer.
-    It seems to not be admissible.
-    """
-    m, n = grid[0], grid[1]
-    lc = 0
-    # Horizontally
-    for i in range(m):
-        C = [0] * n
-        for j in range(n):
-            line_dest_j, col_dest_j = (grid[n * i + j + 2] - 1) % n, (
-                grid[n * i + j + 2] - 1
-            ) // n
-            for k in range(j):
-                line_dest_k, col_dest_k = (grid[n * i + k + 2] - 1) % n, (
-                    grid[n * i + k + 2] - 1
-                ) // n
-                if line_dest_j == line_dest_k and col_dest_j > col_dest_k:
-                    # In the original implementation the condition was col_dest_k > col_dest_j
-                    # In other words, it computes the number of inversion
-                    # In the (n^2-1) puzzle, an inversion cost more moves but in the swap puzzle
-                    # it's the opposite. The non-inversion are actually less preferable in this game.
-                    C[j] += 1
-        while max(C) > 0:
-            C[C.index(max(C))] = 0
-            lc += 1
-            for k in range(n):
-                if C[k]:
-                    C[k] -= 1
-
-    for j in range(n):
-        C = [0] * m
-        for i in range(m):
-            line_dest_i, col_dest_i = (grid[n * i + j + 2] - 1) % n, (
-                grid[n * i + j + 2] - 1
-            ) // n
-            for k in range(i):
-                line_dest_k, col_dest_k = (grid[n * k + j + 2] - 1) % n, (
-                    grid[n * k + j + 2] - 1
-                ) // n
-                if col_dest_i == col_dest_k and line_dest_i > line_dest_k:
-                    C[i] += 1
-
-        while max(C) > 0:
-            C[C.index(max(C))] = 0
-            lc += 1
-            for k in range(m):
-                if C[k]:
-                    C[k] -= 1
-        return lc + half_manhattan_distance(grid)
-
-
 def compose(grid1: Tuple[int, ...], grid2: Tuple[int, ...]) -> Tuple[int, ...]:
     """
     Computes the composition of two grids by considering them as permutations.
@@ -293,11 +218,11 @@ def inverse(grid: Tuple[int, ...]) -> Tuple[int, ...]:
     inv_grid = [0] * len(grid)
     inv_grid[0], inv_grid[1] = grid[0], grid[1]
     for i in range(grid[0] * grid[1]):
-        inv_grid[grid[i + 2] + 1] = i
+        inv_grid[grid[i + 2] + 1] = i + 1
     return tuple(inv_grid)
 
 
-def inversions(grid: Tuple[int, ...]) -> int:
+def inversion_count(grid: Tuple[int, ...]) -> int:
     """
     Computes the number of inversions of a grid by considering it as a permutation.
     It is equal to the length to an optimal solution if the size of the grid is 1 x n.
@@ -310,14 +235,5 @@ def inversions(grid: Tuple[int, ...]) -> int:
     return nb_inv
 
 
-half_sum = lambda x: sum(x) / 2
-
-def vertical_symmetry(m: int, n:int):
-    grid = [0]*m*n
-    for i in range(m):
-        for j in range(n):
-            grid[n*i + j] = n*(n  - 1 - i) + j + 1
-    return tuple([m, n] + grid)
-
-if __name__ == "__main__":
-    print(vertical_symmetry(4, 4))
+def half_sum(x):
+    return sum(x) / 2

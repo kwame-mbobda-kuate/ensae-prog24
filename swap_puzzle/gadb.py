@@ -13,13 +13,6 @@ import collections
 import time
 
 
-def are_disjoint(l1, l2):
-    for i in l1:
-        if i in l2:
-            return False
-    return True
-
-
 def half_manhattan_distance(length: int, n: int, grid: Tuple[int, ...]) -> float:
     """
     Compute the half sum of the Manhattan distances between the cell occupied by each number
@@ -70,6 +63,10 @@ def get_neighbors(m: int, n: int, grid) -> Tuple[int, ...]:
 
 
 class GADB:
+    """
+    Represents a General Additive Database (or also called dynamically-partitionned database)
+    as described in https://arxiv.org/pdf/1107.0050.pdf (section 3).
+    """
 
     def __init__(self, m: int, n: int, k: int, gadb: Dict[Tuple[int, ...], float] = {}):
         self.m = m
@@ -79,11 +76,10 @@ class GADB:
 
     def compute(self):
         """
-        Computes a General Additive Database (or also called dynamically-partitionned database)
-        as described in https://arxiv.org/pdf/1107.0050.pdf. This functions finds all
-        the k-uplets of tiles whose distance is superior than their half Mahnattan distance.
+        This functions finds all the k-uplets of tiles whose distance is greater than
+        their half Mahnattan distance.
         """
-        self.gadb = dict()
+        self.gadb = np.zeros([self.m * self.n] * 2 * self.k, np.uint8) - 1
         # Format used: {grid: distance}}
         for comb in itertools.combinations(range(self.m * self.n), self.k):
             comb = list(comb)
@@ -109,7 +105,7 @@ class GADB:
     @staticmethod
     def get_filename(m: int, n: int, k: int) -> str:
         """
-        Gives a generic filename for storing APDBs.
+        Gives a generic filename for storing GADBs.
         """
         return f"gadb\\{m} x {n}, {k}"
 
@@ -160,6 +156,3 @@ class GADBList:
                 weight += w
             i += 1
         return weight / 2 + utils.half_manhattan_distance(grid)
-
-    def get_heuristic(self) -> Callable[[Tuple[int, ...]], float]:
-        return lambda grid: self.heuristic(grid)

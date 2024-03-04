@@ -23,7 +23,13 @@ def solving_time(solvers, m, n, N):
         )
 
 
-def greatest_heuristic(heuristics, m, n, N):
+def compare_heuristic(heuristics, m, n, N):
     grids = [grid.Grid.random_grid(m, n).to_tuple() for _ in range(N)]
     means = [sum(heuristic(g) for g in grids) / N for heuristic in heuristics]
     print(means)
+
+s = solver.MDAStarSolver()
+s.compute(4, 4)
+h = gadb.GADBList([GADB.default_load(4, 4, 2), GADB.default_load(4, 4, 3)]).get_heuristic()
+s2 = solver.AStarSolver(h)
+solving_time([s, s2], 4, 4, 10)

@@ -243,8 +243,8 @@ class Grid:
         random.shuffle(state)
         return Grid.grid_from_tuple([m, n] + state)
 
-    @classmethod
-    def all_swaps(cls, m, n) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
+    @staticmethod
+    def all_swaps(m, n) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
         """
         Generates the list of all possible swaps.
         For symetry reasons, only the swaps involving
@@ -264,4 +264,27 @@ class Grid:
                     swaps.append(((i, j), (i + 1, j)))
                 if j < n - 1:
                     swaps.append(((i, j), (i, j + 1)))
+        return swaps
+
+    @staticmethod
+    def alt_all_swaps(m, n) -> List[Tuple[int, int]]:
+        """
+        Generates the list of all possible swaps.
+        For symetry reasons, only the swaps involving
+        a given cell with the bottom and right ones (if they exist) are considered.
+
+        Output:
+        -------
+        swaps: List[Tuple[Tuple[int, int], Tuple[int, int]]]
+        The list of all possible swaps on the given grid (up to symetry).
+        Each swap is a tuple of two cells (each cell being a single integer).
+        So the format is [(i1, j1), (i2, j2), ...]
+        """
+        swaps = []
+        for i in range(m):
+            for j in range(n):
+                if i < m - 1:
+                    swaps.append((i * n + j + 2, (i + 1) * n + j + 2))
+                if j < n - 1:
+                    swaps.append((i * n + j + 2, i * n + j + 1 + 2))
         return swaps
