@@ -57,6 +57,7 @@ class APDB:
         """
         raise NotImplementedError
 
+
 def representation(group: Tuple[int, ...], grid: Tuple[int, ...]) -> Tuple[int, ...]:
     """
     Computes the group representation of a grid.
@@ -75,6 +76,7 @@ def representation(group: Tuple[int, ...], grid: Tuple[int, ...]) -> Tuple[int, 
     """
     return tuple(grid.index(k, 2) - 2 for k in group)
 
+
 class ArrayAPDB(APDB):
     """
     An implementation of APDB using np.array.
@@ -90,7 +92,7 @@ class ArrayAPDB(APDB):
                 src[k] = -1
         src = tuple(src)
         all_swaps = Grid.all_swaps(self.m, self.n)
-        self.apdb[representation(src)] = 0
+        self.apdb[representation(self.group, src)] = 0
         queue = collections.deque([(src, 0)])
         while queue:
             node, d = queue.pop()
@@ -106,7 +108,7 @@ class ArrayAPDB(APDB):
                 utils.make_swap(L, swap)
                 neighbor = tuple(L)
                 utils.make_swap(L, swap)
-                repr = representation(neighbor)
+                repr = representation(self.group, neighbor)
                 if self.apdb[repr] < 0:
                     queue.appendleft((neighbor, d + 1))
                     self.apdb[repr] = d + 1
@@ -127,7 +129,7 @@ class ArrayAPDB(APDB):
         return ArrayAPDB.load(ArrayAPDB.default_filename(m, n, group))
 
     def save(self, filename="") -> None:
-        if not self.apdb:
+        if self.apdb == []:
             self.compute()
         filename = filename or ArrayAPDB.default_filename(self.m, self.n, self.group)
         np.savez_compressed(
@@ -135,7 +137,7 @@ class ArrayAPDB(APDB):
         )
 
     def heuristic(self, grid) -> int:
-        return self.apdb[representation(grid)]
+        return self.apdb[representation(self.group, grid)]
 
 
 class DictAPDB(APDB):
@@ -177,7 +179,9 @@ class DictAPDB(APDB):
                     queue.appendleft(cpy)
                     self.apdb[cpy] = d + 1
         # The group representation is far more compact than the usual one
-        self.apdb = {representation(grid): d for grid, d in self.apdb.items()}
+        self.apdb = {
+            representation(self.group, grid): d for grid, d in self.apdb.items()
+        }
 
     def save(self, filename="") -> None:
         if not self.apdb:
@@ -196,19 +200,25 @@ class DictAPDB(APDB):
         return DictAPDB.load(DictAPDB.default_filename(m, n, group))
 
     def heuristic(self, grid: Tuple[int, ...]) -> int:
-        return self.apdb[representation(grid)]
+        return self.apdb[representation(self.group, grid)]
 
 
-class SymmetryAPDB:
+class VertSymmetryAPDB:
     """
-    Represents the result of a symmetry on a APDB.
+    Represents the result of a vertical symmetry on a APDB.
     """
-    def __init__(self, apdb: "APDB", symmetry: Tuple[int, ...]):
+
+    def __init__(self, apdb: "APDB"):
         self.apdb = apdb
-        self.symmetry = symmetry
 
     def heuristic(self, grid: Tuple[int, ...]) -> int:
-        return self.apdb.heuristic(utils.compose(self.symmetry, grid))
+        m, n = grid[0], grid[1]
+        symmetry = list(grid)
+        for i in range(m):
+            for j in range(n):
+                y, x = divmod(grid[n * i + j + 2] - 1, n)
+                symmetry[n * (m - 1 - i) + j + 2] = n * (m - 1 - x) + y + 1
+        return self.apdb.heuristic(symmetry)
 
 
 class APDBList:
@@ -224,6 +234,3 @@ class APDBList:
 
     def heuristic(self, grid: Tuple[int, ...]) -> float:
         return self.f([apdb.heuristic(grid) for apdb in self.apdbs])
-
-    def get_heuristic(self) -> Callable[[Tuple[int, ...]], float]:
-        return lambda grid: self.heuristic(grid)

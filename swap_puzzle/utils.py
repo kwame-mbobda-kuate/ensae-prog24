@@ -1,7 +1,5 @@
 from typing import List, Tuple, Callable
 from grid import Grid
-import heapq
-import bisect
 import random
 import math
 
@@ -27,7 +25,7 @@ def sign(x: float) -> int:
     return -1
 
 
-def make_swap(grid: List[int], swap: Tuple[int, int]) -> None:
+def make_swap(grid: List[int], swap: Tuple[Tuple[int, int], Tuple[int, int]]) -> None:
     """
     Makes a swap on the tuple representation of a grid
 
@@ -44,14 +42,30 @@ def make_swap(grid: List[int], swap: Tuple[int, int]) -> None:
     grid[i], grid[j] = grid[j], grid[i]
 
 
+def alt_make_swap(grid: List[int], swap: int) -> None:
+    """
+    Makes a swap on the tuple representation of a grid
+
+    Parameters:
+    -----------
+
+    grid: List[int]
+        The tuple representation of a grid.
+    swap: int
+        The swap a the n*i + j format.
+    """
+    grid[swap[0]], grid[swap[1]] = grid[swap[1]], grid[swap[0]]
+
+
 def reconstruct_path(
     path: List[Tuple[int, ...]]
 ) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
     """
     Finds the sequence of swaps needed to go from each grid to the next one.
 
-    Parameter:
-    ----------
+    Parameters:
+    -----------
+
     path: List[Tuple[int, ...]]
         A list of grids as tuple representations. The function assumes that each
         grid of the list can be obtained by making an allowed swap on the previous one.
@@ -84,59 +98,6 @@ def reconstruct_path(
     return swaps
 
 
-def general_half_manhattan_distance(grid1: Tuple[int, ...], grid2: Tuple[int, ...]):
-    """
-    Returns a function which computes the halved Manhattan distance
-    from a target grid.
-    """
-    sum_manhattan = 0
-    m, n = grid1[0], grid1[1]
-    inv = inverse(grid2)
-    for i in range(m):
-        for j in range(n):
-            # grid[i * n + j + 2] is at
-            # ((grid[i * n + j + 2] - 1) // n,
-            #  (grid[i * n + j + 2] - 1) % n) in the sorted grid.
-            sum_manhattan += abs((inv[grid1[i * n + j + 2] + 1] - 1) // n - i) + abs(
-                (inv[grid1[i * n + j + 2] + 1] - 1) % n - j
-            )
-    return sum_manhattan / 2
-
-
-def update(
-    grid: Tuple[int, ...], swap: Tuple[Tuple[int, int], Tuple[int, int]]
-) -> float:
-    """
-    Computes the change in the Manhattan distance made by the swap.
-    """
-    m, n = grid[0], grid[1]
-    if swap[0][0] == swap[1][0]:
-        # Déplacement horizontal
-        dx_1 = sign((grid[swap[0][0] * n + swap[0][1] + 2] - 1) % n - swap[0][1])
-        if dx_1 == 0:
-            sign_1 = 1
-        else:
-            sign_1 = -sign(swap[1][1] - swap[0][1]) * dx_1
-        dx_2 = sign((grid[swap[1][0] * n + swap[1][1] + 2] - 1) % n - swap[1][1])
-        if dx_2 == 0:
-            sign_2 = 1
-        else:
-            sign_2 = -sign(swap[0][1] - swap[1][1]) * dx_2
-    if swap[0][1] == swap[1][1]:
-        # Déplacement vertical
-        dy_1 = sign((grid[swap[0][0] * n + swap[0][1] + 2] - 1) // n - swap[0][0])
-        if dy_1 == 0:
-            sign_1 = 1
-        else:
-            sign_1 = -sign(swap[1][0] - swap[0][0]) * dy_1
-        dy_2 = sign((grid[swap[1][0] * n + swap[1][1] + 2] - 1) // n - swap[1][0])
-        if dy_2 == 0:
-            sign_2 = 1
-        else:
-            sign_2 = -sign(swap[0][0] - swap[1][0]) * dy_2
-    return (sign_1 + sign_2) / 2
-
-
 def half_manhattan_distance(grid: Tuple[int, ...]) -> float:
     """
     Compute the half sum of the Manhattan distances (also known as L1 distance on R^2)
@@ -167,6 +128,95 @@ def half_manhattan_distance(grid: Tuple[int, ...]) -> float:
     return sum_manhattan / 2
 
 
+def integer_half_manhattan_distance(grid: Tuple[int, ...]) -> int:
+    return math.ceil(half_manhattan_distance(grid))
+
+
+def general_half_manhattan_distance(
+    grid2: Tuple[int, ...]
+) -> Callable[[Tuple[int, ...]], float]:
+    """
+    Returns a function which computes the halved Manhattan distance
+    from a reference grid.
+    """
+    m, n = grid2[0], grid2[1]
+    inv = inverse(grid2)
+
+    def aux(grid1: Tuple[int, ...]) -> float:
+        sum_manhattan = 0
+        for i in range(m):
+            for j in range(n):
+                sum_manhattan += abs(
+                    (inv[grid1[i * n + j + 2] + 1] - 1) // n - i
+                ) + abs((inv[grid1[i * n + j + 2] + 1] - 1) % n - j)
+        return sum_manhattan / 2
+
+    return aux
+
+
+def alt_general_half_manhattan_distance(
+    grid1: Tuple[int, ...], grid2: Tuple[int, ...]
+) -> float:
+    """
+    Computes directly the Manhattan distance between two grids.
+    """
+    m, n = grid2[0], grid2[1]
+    inv = inverse(grid2)
+    sum_manhattan = 0
+    for i in range(m):
+        for j in range(n):
+            sum_manhattan += abs((inv[grid1[i * n + j + 2] + 1] - 1) // n - i) + abs(
+                (inv[grid1[i * n + j + 2] + 1] - 1) % n - j
+            )
+    return sum_manhattan / 2
+
+
+def update(
+    grid: Tuple[int, ...], swap: Tuple[Tuple[int, int], Tuple[int, int]]
+) -> float:
+    """
+    Computes the change of the Manhattan distance made by the swap.
+
+    Parameters:
+    ----------
+        grid: Tuple[int, ...]
+        The grid before the swap.
+
+        swap: Tuple[Tuple[int, int], Tuple[int, int]
+        The swap to make.
+
+    Output:
+    -------
+    The variation of the Manhattan distance caused by the swap.
+    """
+    m, n = grid[0], grid[1]
+    if swap[0][0] == swap[1][0]:
+        # Déplacement horizontal
+        dx_1 = sign((grid[swap[0][0] * n + swap[0][1] + 2] - 1) % n - swap[0][1])
+        if dx_1 == 0:
+            sign_1 = 1
+        else:
+            sign_1 = -sign(swap[1][1] - swap[0][1]) * dx_1
+        dx_2 = sign((grid[swap[1][0] * n + swap[1][1] + 2] - 1) % n - swap[1][1])
+        if dx_2 == 0:
+            sign_2 = 1
+        else:
+            sign_2 = -sign(swap[0][1] - swap[1][1]) * dx_2
+    if swap[0][1] == swap[1][1]:
+        # Déplacement vertical
+        dy_1 = sign((grid[swap[0][0] * n + swap[0][1] + 2] - 1) // n - swap[0][0])
+        if dy_1 == 0:
+            sign_1 = 1
+        else:
+            sign_1 = -sign(swap[1][0] - swap[0][0]) * dy_1
+        dy_2 = sign((grid[swap[1][0] * n + swap[1][1] + 2] - 1) // n - swap[1][0])
+        if dy_2 == 0:
+            sign_2 = 1
+        else:
+            sign_2 = -sign(swap[0][0] - swap[1][0]) * dy_2
+    return (sign_1 + sign_2) / 2
+
+
 def difficulty_bounded_grid(m: int, n: int, a: float, b: float) -> "Grid":
     """
     Generate randomly a grid whose difficulty is contained in a given interval.
@@ -190,8 +240,8 @@ def difficulty_bounded_grid(m: int, n: int, a: float, b: float) -> "Grid":
     grid = Grid(m, n)
     mini, maxi = math.ceil(a * max_distance), math.floor(
         b * max_distance
-    )  # interval of distance
-    k = random.randint(mini, maxi)  # level of difficulty within this interval
+    )  # interval of difficuly
+    k = random.randint(mini, maxi)  # level of difficulty chosen in the interval
 
     swaps = Grid.all_swaps(m, n)
     while half_manhattan_distance(grid.to_tuple()) != k:
@@ -202,7 +252,7 @@ def difficulty_bounded_grid(m: int, n: int, a: float, b: float) -> "Grid":
 
 def compose(grid1: Tuple[int, ...], grid2: Tuple[int, ...]) -> Tuple[int, ...]:
     """
-    Computes the composition of two grids by considering them as permutations.
+    Computes the composition of two grids considered as permutations.
     """
     grid3 = [0] * len(grid1)
     grid3[0], grid3[1] = grid1[0], grid1[1]
@@ -213,7 +263,7 @@ def compose(grid1: Tuple[int, ...], grid2: Tuple[int, ...]) -> Tuple[int, ...]:
 
 def inverse(grid: Tuple[int, ...]) -> Tuple[int, ...]:
     """
-    Compute the inverse of a grid by considering it as a permutation.
+    Compute the inverse of a grid considered as a permutation.
     """
     inv_grid = [0] * len(grid)
     inv_grid[0], inv_grid[1] = grid[0], grid[1]
@@ -225,15 +275,35 @@ def inverse(grid: Tuple[int, ...]) -> Tuple[int, ...]:
 def inversion_count(grid: Tuple[int, ...]) -> int:
     """
     Computes the number of inversions of a grid by considering it as a permutation.
-    It is equal to the length to an optimal solution if the size of the grid is 1 x n.
     """
     nb_inv = 0
-    for i in range(2, grid[0] * grid[1]):
-        for j in range(2, i):
-            if grid[i] < grid[j]:
+    for i in range(2, len(grid)):
+        for j in range(i + 1, len(grid)):
+            if grid[i] > grid[j]:
                 nb_inv += 1
     return nb_inv
 
 
+def reflection(grid: Tuple[int, ...]) -> Tuple[int, ...]:
+    """
+    Relfects the positions and the values of the grid along the main diagonal.
+    """
+    m, n = grid[0], grid[1]
+    grid_reflexion = [n, m] + [0] * n * m
+    for i in range(n):
+        for j in range(m):
+            k = n * j + i + 2
+            x, y = (grid[k] - 1) % n, (grid[k] - 1) // n
+            grid_reflexion[m * i + j + 2] = m * x + y + 1
+    return grid_reflexion
+
+
+def inversion_distance(grid: Tuple[int, ...]) -> int:
+    m, n = grid[0], grid[1]
+    inv_h = inversion_count(grid)
+    inv_v = inversion_count(reflection(grid))
+    return math.ceil((inv_h + inv_v) / (max(n, m) * 2))
+
+
 def half_sum(x):
-    return sum(x) / 2
+    return math.ceil(sum(x) / 2)

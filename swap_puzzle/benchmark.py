@@ -1,14 +1,10 @@
-import solver
 import time
 import grid
-import gadb
-import utils
 from apdb import ArrayAPDB
-import apdb
 from gadb import GADB
 
 
-def solving_time(solvers, m, n, N):
+def benchmark_solvers(solvers, m, n, N):
     """
     Benchmarks a list of solvers on random grids.
     """
@@ -19,17 +15,19 @@ def solving_time(solvers, m, n, N):
         for grid_ in grids:
             nb_nodes += solver.solve(grid_, debug=True)["nb_nodes"]
         print(
-            f"{solver} : {((time.perf_counter() - t1) / N):.4f} seconds, {nb_nodes / N} expanded"
+            f"{solver} : {((time.perf_counter() - t1) / N):.4f} seconds, {nb_nodes / N:.2f} nodes expanded"
         )
 
 
-def compare_heuristic(heuristics, m, n, N):
+def benchmark_heuristics(heuristics, m, n, N):
+    """
+    Benchmarks a list of heuristics on random grids.
+    """
     grids = [grid.Grid.random_grid(m, n).to_tuple() for _ in range(N)]
-    means = [sum(heuristic(g) for g in grids) / N for heuristic in heuristics]
-    print(means)
-
-s = solver.MDAStarSolver()
-s.compute(4, 4)
-h = gadb.GADBList([GADB.default_load(4, 4, 2), GADB.default_load(4, 4, 3)]).get_heuristic()
-s2 = solver.AStarSolver(h)
-solving_time([s, s2], 4, 4, 10)
+    for heuristic in heuristics:
+        sum_h = 0
+        t1 = time.perf_counter()
+        for g in grids:
+            sum_h = sum_h + heuristic(g) / N
+        t2 = time.perf_counter() - t1
+        print(sum_h, t2 / N)

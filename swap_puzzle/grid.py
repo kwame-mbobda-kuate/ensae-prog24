@@ -267,7 +267,7 @@ class Grid:
         return swaps
 
     @staticmethod
-    def alt_all_swaps(m, n) -> List[Tuple[int, int]]:
+    def alt_all_swaps(m, n) -> List[int]:
         """
         Generates the list of all possible swaps.
         For symetry reasons, only the swaps involving
@@ -275,10 +275,10 @@ class Grid:
 
         Output:
         -------
-        swaps: List[Tuple[Tuple[int, int], Tuple[int, int]]]
+        swaps: List[int]
         The list of all possible swaps on the given grid (up to symetry).
-        Each swap is a tuple of two cells (each cell being a single integer).
-        So the format is [(i1, j1), (i2, j2), ...]
+        Each swap is a single integer (each cell being a single integer).
+        So the format is [n * i1 + j1, n * i2 + j2 , ...]
         """
         swaps = []
         for i in range(m):

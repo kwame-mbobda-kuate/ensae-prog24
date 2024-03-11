@@ -5,6 +5,12 @@ import itertools
 import copy
 from typing import List, Tuple, Callable
 import collections
+from solver_utils import (
+    AStarNode,
+    OneDimBucketList,
+    TwoDimBucketList,
+    NoTieBreakAStarNode,
+)
 import heapq
 import math
 
@@ -12,7 +18,6 @@ import math
 FWD = 0
 FOUND = 0
 BWD = 1
-MAX_LENGTH = 1000
 
 
 class NaiveSolver:
@@ -90,7 +95,9 @@ class GreedySolver(NaiveSolver):
 
 class NaiveBFSSolver(NaiveSolver):
 
-    def solve(self, grid: Grid) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
+    def solve(
+        self, grid: Grid, debug=False
+    ) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
         """
         Constructs the full graph of possible grids and performs a breadth-first search
         to compute an optimal solution. It then returns the sequence of swaps at the format
@@ -111,7 +118,10 @@ class NaiveBFSSolver(NaiveSolver):
                 graph.add_edge(node, tuple(list_node))
                 utils.make_swap(list_node, swap)  # Redoing the swap to undo it
         path = graph.bfs(src, tuple([m, n] + [x + 1 for x in range(n * m)]))
-        return utils.reconstruct_path(path)
+        path = utils.reconstruct_path(path)
+        if debug:
+            return {"nb_nodes": len(graph.nodes), "path": path}
+        return path
 
 
 class BFSSolver(NaiveSolver):
@@ -130,9 +140,6 @@ class BFSSolver(NaiveSolver):
         explored = {src: (None, None)}
         queue = collections.deque([src])
         nb_nodes = 1
-        # The element of the queue are of the form (Tuple[int, ...], List[Tuple[Tuple[int, int], Tuple[int, int]]])
-        # where the first element is tuple representation of a grid and the second the swaps needed to obtain it
-        # starting from src.
         while queue:
             node = queue.pop()
             if node == dst:
@@ -155,11 +162,12 @@ class BFSSolver(NaiveSolver):
                 utils.make_swap(L, swap)
 
 
-class BidirectionnalBFSSolver(NaiveSolver):
+class BidirectionalBFSSolver(NaiveSolver):
     """
     Solves the swap puzzle by performing a bidirectionnal BFS i.e
     a BFS from the source and another from the destination.
     """
+
     def solve(
         self, grid: Grid, debug: bool = False
     ) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
@@ -200,12 +208,11 @@ class BidirectionnalBFSSolver(NaiveSolver):
             dir = 1 - dir
 
 
-class OptimizedBFSSolver(NaiveSolver):
+class PseudoBidirectionalSolver(NaiveSolver):
     """
     Performs a breadth-first search on a graph starting from the sorted grid and expanding it gradually
     to compute an optimal solution.  When a grid is seen, it checks if its symetric has been seen. If so,
-    it can deduce an optimal path. It expands less nodes than the classic version but takes more time.
-    It then returns the sequence of swaps at the format [((i1, j1), (i2, j2)), ((i1', j1'), (i2', j2')), ...].
+    it can deduce an optimal path..
     """
 
     def solve(
@@ -245,9 +252,10 @@ class OptimizedBFSSolver(NaiveSolver):
                 # src^(-1) o cpy to src o src^(-1)
                 # i.e. from src^(-1) o cpy to dst
                 if sym in seen:
+                    path = (path + seen[sym])[::-1]
                     if debug:
-                        print(f"{self.name}: {nb_nodes} nodes expanded")
-                    return (path + seen[sym])[::-1]
+                        return {"nb_nodes": nb_nodes, "path": path}
+                    return path
 
 
 class BubbleSortSolver(NaiveSolver):
@@ -266,65 +274,106 @@ class BubbleSortSolver(NaiveSolver):
 
 
 class AStarSolver(HeuristicSolver):
+    """
+    The classic A* solver, implemented with
+    binary heap and using tie-breaking based on
+    g values between nodes of equal f values.
+    """
 
     def solve(
         self, grid: Grid, debug=False
     ) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
-        """
-        Compute an optimal solution by using the A* algorithm.
-        """
         nb_nodes = 0
-        src = grid.to_tuple()
+        src = AStarNode(grid.to_tuple(), None, 0, self.heuristic(grid.to_tuple()))
         dst = Grid(grid.m, grid.n).to_tuple()
-        all_swaps = Grid.all_swaps(grid.m, grid.n)
-        open_set, closed_set = {src: (0, self.heuristic(src))}, {src: None}
-        # closed_set contains the parent from which we discovered the node
-        # open_set contains (distance known, heuristic + distance)
-        #                    (g, f)
-        queue = [(0, src)]
-        # [(heuristic + distance, index, node)]
-        # index allows A* to work in a LIFO way across equal cost
-        # paths
+        all_swaps = Grid.alt_all_swaps(grid.m, grid.n)
+        open_set, closed_set = {src: 0}, set()
+        # open_set maps grids to their g value
+        queue = [src]
         heapq.heapify(queue)
         while queue:
-            _, node = heapq.heappop(queue)
-            if node == dst:
+            node = heapq.heappop(queue)
+            closed_set.add(node)
+            if node.grid == dst:
                 path = []
                 while node:
-                    path.append(node)
-                    node = closed_set[node]
+                    path.append(node.grid)
+                    node = node.parent
                 path.reverse()
                 path = utils.reconstruct_path(path)
                 if debug:
                     return {"nb_nodes": nb_nodes, "path": path}
                 return path
-            tentative_g = open_set[node][0] + 1
-            list_ = list(node)
+            list_grid = list(node.grid)
+            neighbor_g = node.g + 1
             for swap in all_swaps:
-                utils.make_swap(list_, swap)
-                neighbor = tuple(list_)
-                utils.make_swap(list_, swap)
+                utils.alt_make_swap(list_grid, swap)
+                neighbor_grid = tuple(list_grid)
+                neighbor = AStarNode(neighbor_grid, node, neighbor_g, 0)
+                utils.alt_make_swap(list_grid, swap)
                 if neighbor in closed_set:
                     continue
-                if neighbor in open_set:
-                    move_g, move_h = open_set[neighbor]
-                    if move_g <= tentative_g:
-                        continue
-                else:
-                    move_h = self.heuristic(neighbor)
-                open_set[neighbor] = tentative_g, move_h
-                heapq.heappush(
-                    queue,
-                    (move_h + tentative_g, neighbor),
-                )
+                if open_set.get(neighbor, math.inf) <= neighbor_g:
+                    continue
+                neighbor.h = self.heuristic(neighbor_grid)
+                neighbor.f = neighbor.g + neighbor.h
+                open_set[neighbor] = neighbor_g
+                heapq.heappush(queue, neighbor)
                 nb_nodes += 1
-                closed_set[neighbor] = node
+
+
+class BucketAStarSolver(HeuristicSolver):
+    """
+    An implementation of A* with two dimensional
+    bucket list to allow tie-breaking.
+    """
+
+    def solve(
+        self, grid: Grid, debug=False
+    ) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
+        nb_nodes = 0
+        src = AStarNode(grid.to_tuple(), None, 0, self.heuristic(grid.to_tuple()))
+        dst = Grid(grid.m, grid.n).to_tuple()
+        all_swaps = Grid.alt_all_swaps(grid.m, grid.n)
+        open_set, closed_set = {src: 0}, set()
+        queue = TwoDimBucketList()
+        queue.add(src)
+        while not queue.empty():
+            node = queue.pop()
+            closed_set.add(node)
+            if node.grid == dst:
+                path = []
+                while node:
+                    path.append(node.grid)
+                    node = node.parent
+                path.reverse()
+                path = utils.reconstruct_path(path)
+                if debug:
+                    return {"nb_nodes": nb_nodes, "path": path}
+                return path
+            list_grid = list(node.grid)
+            neighbor_g = node.g + 1
+            for swap in all_swaps:
+                utils.alt_make_swap(list_grid, swap)
+                neighbor_grid = tuple(list_grid)
+                neighbor = AStarNode(neighbor_grid, node, neighbor_g, 0)
+                utils.alt_make_swap(list_grid, swap)
+                if neighbor in closed_set:
+                    continue
+                if neighbor not in open_set or neighbor_g < open_set[neighbor]:
+                    neighbor.h = self.heuristic(neighbor_grid)
+                    neighbor.f = neighbor.g + neighbor.h
+                    open_set[neighbor] = neighbor_g
+                    queue.add(neighbor)
+                    nb_nodes += 1
 
 
 class MDAStarSolver:
     """
-    An A* solver optimized for Mahnattan Distance.
+    An A* solver optimized for Mahnattan Distance by
+    computing it incrementally.
     """
+
     def __init__(self, name="", dbs={}):
         self.dbs = dbs
         self.name = name
@@ -333,6 +382,10 @@ class MDAStarSolver:
         return self.name
 
     def compute(self, m: int, n: int):
+        """
+        Precomputes the variations of Manhattan
+        distance.
+        """
         db = {}
         g = list(Grid(m, n).to_tuple())
         for swap in Grid.all_swaps(m, n):
@@ -348,67 +401,59 @@ class MDAStarSolver:
     def solve(
         self, grid: Grid, debug=False
     ) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
-        """
-        Compute an optimal solution by using the A* algorithm.
-        """
         nb_nodes = 0
         m, n = grid.m, grid.n
         if (m, n) not in self.dbs:
             self.compute(m, n)
         db = self.dbs[(m, n)]
-        src = grid.to_tuple()
+        src = AStarNode(
+            grid.to_tuple(), None, 0, utils.half_manhattan_distance(grid.to_tuple())
+        )
         dst = Grid(grid.m, grid.n).to_tuple()
         all_swaps = Grid.alt_all_swaps(grid.m, grid.n)
-        open_set, closed_set = {src: (0, 0)}, {src: None}
-        # closed_set contains the parent from which we discovered the node
-        # open_set contains (distance known, heuristic + distance)
-        #                    (g, f)
-        queue = [(0, src)]
-        # [(heuristic + distance, index, node)]
-        # index allows A* to work in a LIFO way across equal cost
-        # paths
+        open_set, closed_set = {src: 0}, set()
+        queue = [src]
         heapq.heapify(queue)
         while queue:
-            _, node = heapq.heappop(queue)
-            if node == dst:
+            node = heapq.heappop(queue)
+            closed_set.add(node)
+            if node.grid == dst:
                 path = []
                 while node:
-                    path.append(node)
-                    node = closed_set[node]
+                    path.append(node.grid)
+                    node = node.parent
                 path.reverse()
                 path = utils.reconstruct_path(path)
                 if debug:
                     return {"nb_nodes": nb_nodes, "path": path}
                 return path
-            tentative_g, tentative_h = open_set[node]
-            tentative_g += 1
-            list_ = list(node)
+            list_grid = list(node.grid)
+            neighbor_g = node.g + 1
             for swap in all_swaps:
-                list_[swap[0]], list_[swap[1]] = list_[swap[1]], list_[swap[0]]
-                neighbor = tuple(list_)
-                list_[swap[0]], list_[swap[1]] = list_[swap[1]], list_[swap[0]]
+                utils.alt_make_swap(list_grid, swap)
+                neighbor_grid = tuple(list_grid)
+                neighbor = AStarNode(neighbor_grid, node, neighbor_g, 0)
+                utils.alt_make_swap(list_grid, swap)
                 if neighbor in closed_set:
                     continue
-                if neighbor in open_set:
-                    move_g, move_h = open_set[neighbor]
-                    if move_g <= tentative_g:
-                        continue
-                else:
-                    move_h = (
-                        tentative_h
-                        + db[(swap[0], swap[1], node[swap[0]], node[swap[1]])]
-                    )
-                    # move_h = self.heuristic(neighbor)
-                open_set[neighbor] = tentative_g, move_h
-                heapq.heappush(
-                    queue,
-                    (move_h + tentative_g, neighbor),
+                if open_set.get(neighbor, math.inf) <= neighbor_g:
+                    continue
+                neighbor.h = (
+                    node.h
+                    + db[(swap[0], swap[1], list_grid[swap[0]], list_grid[swap[1]])]
                 )
+                neighbor.f = neighbor.g + neighbor.h
+                open_set[neighbor] = neighbor_g
+                heapq.heappush(queue, neighbor)
                 nb_nodes += 1
-                closed_set[neighbor] = node
 
 
 class PerimeterAStarSolver(HeuristicSolver):
+    """
+    An algorithm which performs a BFS from the destination then
+    runs A* from the source with an improved heurisitc.
+    See https://www.sciencedirect.com/science/article/pii/000437029490040X.
+    """
 
     def __init__(
         self,
@@ -454,41 +499,343 @@ class PerimeterAStarSolver(HeuristicSolver):
             if debug:
                 return {"nb_nodes": nb_nodes, "path": self.a_d[src]}
             return self.a_d[src]
-        open_set, closed_set = {src: (0, self.heuristic_d(src))}, {src: None}
-        queue = [(0, src)]
-        heapq.heapify(queue)
 
+        nb_nodes = 0
+        src = AStarNode(grid.to_tuple(), None, 0, self.heuristic_d(grid.to_tuple()))
+        dst = Grid(grid.m, grid.n).to_tuple()
+        all_swaps = Grid.alt_all_swaps(grid.m, grid.n)
+        open_set, closed_set = {src: 0}, set()
+        queue = [src]
+        heapq.heapify(queue)
         while queue:
-            _, node = heapq.heappop(queue)
-            if node in self.a_d:
-                cpy = node
+            node = heapq.heappop(queue)
+            closed_set.add(node)
+            if node.grid in self.a_d:
+                cpy = node.grid
                 path = []
                 while node:
-                    path.append(utils.compose(node, dst))
-                    node = closed_set[node]
+                    path.append(node.grid)
+                    node = node.parent
                 path.reverse()
                 path = self.a_d[cpy] + utils.reconstruct_path(path)
+                path.reverse()
                 if debug:
                     return {"nb_nodes": nb_nodes, "path": path}
                 return path
-            tentative_g = open_set[node][0] + 1
-            list_ = list(node)
+            list_grid = list(node.grid)
+            neighbor_g = node.g + 1
             for swap in all_swaps:
-                utils.make_swap(list_, swap)
-                neighbor = tuple(list_)
-                utils.make_swap(list_, swap)
+                utils.alt_make_swap(list_grid, swap)
+                neighbor_grid = tuple(list_grid)
+                neighbor = AStarNode(neighbor_grid, node, neighbor_g, 0)
+                utils.alt_make_swap(list_grid, swap)
                 if neighbor in closed_set:
                     continue
-                if neighbor in open_set:
-                    move_g, move_h = open_set[neighbor]
-                    if move_g <= tentative_g:
-                        continue
-                else:
-                    move_h = self.heuristic_d(neighbor)
-                open_set[neighbor] = tentative_g, move_h
-                heapq.heappush(
-                    queue,
-                    (move_h + tentative_g, neighbor),
-                )
+                if open_set.get(neighbor, math.inf) <= neighbor_g:
+                    continue
+                neighbor.h = self.heuristic_d(neighbor_grid)
+                neighbor.f = neighbor.g + neighbor.h
+                open_set[neighbor] = neighbor_g
+                heapq.heappush(queue, neighbor)
                 nb_nodes += 1
-                closed_set[neighbor] = node
+
+
+class BidirectionalAStarSolver:
+    """
+    A naive implementation of bidirectionnal A*.
+    """
+
+    def __init__(self, get_heurisitic_f, get_heurisitc_b, name=""):
+        self.get_heuristic_f = get_heurisitic_f
+        self.get_heuristic_b = get_heurisitc_b
+        self.name = name
+
+    def __repr__(self) -> str:
+        return self.name
+
+    def solve(
+        self, grid: Grid, debug=False
+    ) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
+        """
+        Compute an optimal solution by using the A* algorithm.
+        """
+        nb_nodes = 0
+        dir = FWD
+        all_swaps = Grid.all_swaps(grid.m, grid.n)
+        grid_srcs = [grid.to_tuple(), Grid(grid.m, grid.n).to_tuple()]
+        heuristics = [
+            self.get_heuristic_f(grid_srcs[BWD]),
+            self.get_heuristic_b(grid_srcs[FWD]),
+        ]
+        srcs = [
+            AStarNode(grid_srcs[FWD], None, 0, heuristics[FWD](grid_srcs[FWD])),
+            AStarNode(grid_srcs[BWD], None, 0, heuristics[BWD](grid_srcs[BWD])),
+        ]
+        open_sets = [{srcs[FWD]: 0}, {srcs[BWD]: 0}]
+        closed_sets = [set(), set()]
+        queues = [[srcs[FWD]], [srcs[BWD]]]
+        heapq.heapify(queues[FWD])
+        heapq.heapify(queues[BWD])
+
+        while queues[BWD] and queues[FWD]:
+            node = heapq.heappop(queues[dir])
+            closed_sets[dir].add(node)
+            if node == srcs[1 - dir]:
+                path = []
+                while node:
+                    path.append(node.grid)
+                    node = node.parent
+                if dir == FWD:
+                    path.reverse()
+                path = utils.reconstruct_path(path)
+                if debug:
+                    return {"nb_nodes": nb_nodes, "path": path}
+                return path
+            if node in closed_sets[dir] and node in closed_sets[1 - dir]:
+                # We found a node visited by both searches
+                nodes = [None, None]
+                nodes[dir] = node
+                for other_node in closed_sets[1 - dir]:
+                    if node == other_node and (
+                        not nodes[1 - dir] or other_node.g < nodes[1 - dir].g
+                    ):
+                        # We take the closest to the srcs[1-dir]
+                        nodes[1 - dir] = other_node
+                node = nodes[FWD]
+                path = []
+                while node.parent:
+                    path.append(node.parent.grid)
+                    node = node.parent
+                path.reverse()
+                node = nodes[BWD]
+                while node:
+                    path.append(node.grid)
+                    node = node.parent
+                path = utils.reconstruct_path(path)
+                if debug:
+                    return {"path": path, "nb_nodes": nb_nodes}
+                return path
+            list_grid = list(node.grid)
+            neighbor_g = node.g + 1
+            for swap in all_swaps:
+                utils.make_swap(list_grid, swap)
+                neighbor_grid = tuple(list_grid)
+                neighbor = AStarNode(neighbor_grid, node, neighbor_g, 0)
+                utils.make_swap(list_grid, swap)
+                if neighbor in closed_sets[dir]:
+                    continue
+                if open_sets[dir].get(neighbor, math.inf) <= neighbor_g:
+                    continue
+                neighbor.h = heuristics[dir](neighbor_grid)
+                neighbor.f = neighbor.g + neighbor.h
+                open_sets[dir][neighbor] = neighbor_g
+                heapq.heappush(queues[dir], neighbor)
+                nb_nodes += 1
+            dir = 1 - dir
+
+
+class DIBBSSolver:
+    """
+    Dynamically improved bounds bidirectional search :
+    a bidirectional search algorithm based on A* that
+    dynamically improves the bounds during its execution.
+    See https://www.sciencedirect.com/science/article/pii/S0004370220301545.
+    """
+
+    def __init__(self, get_heurisitic_f, get_heurisitc_b, name=""):
+        self.get_heuristic_f = get_heurisitic_f
+        self.get_heuristic_b = get_heurisitc_b
+        self.name = name
+
+    def __repr__(self) -> str:
+        return self.name
+
+    def solve(
+        self, grid: Grid, debug=False
+    ) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
+        nb_nodes = 0
+        dir = FWD
+        all_swaps = Grid.alt_all_swaps(grid.m, grid.n)
+        grid_srcs = [grid.to_tuple(), Grid(grid.m, grid.n).to_tuple()]
+        heuristics = [
+            self.get_heuristic_f(grid_srcs[BWD]),
+            self.get_heuristic_b(grid_srcs[FWD]),
+        ]
+        srcs = [
+            AStarNode(grid_srcs[FWD], None, 0, heuristics[FWD](grid_srcs[FWD])),
+            AStarNode(grid_srcs[BWD], None, 0, heuristics[BWD](grid_srcs[BWD])),
+        ]
+        open_sets = [
+            {srcs[FWD]: [heuristics[FWD](grid_srcs[FWD]), 0]},
+            {srcs[BWD]: [heuristics[BWD](grid_srcs[BWD]), 0]},
+        ]
+        closed_sets = [set(), set()]
+        queues = [[srcs[FWD]], [srcs[BWD]]]
+        last_good_node = None
+        UB = math.inf
+        F_min = [0, 0]
+
+        while UB > sum(F_min) / 2:
+            node = heapq.heappop(queues[dir])
+            closed_sets[dir].add(node)
+            list_grid = list(node.grid)
+            neighbor_g = node.g + 1
+            for swap in all_swaps:
+                utils.alt_make_swap(list_grid, swap)
+                neighbor_grid = tuple(list_grid)
+                neighbor = AStarNode(neighbor_grid, node, neighbor_g, 0)
+                utils.alt_make_swap(list_grid, swap)
+                if neighbor in closed_sets[dir]:
+                    continue
+                if neighbor not in open_sets[dir] or open_sets[dir][neighbor][0] > 2 * (
+                    node.g + 1
+                ) + heuristics[dir](neighbor_grid) - heuristics[1 - dir](neighbor_grid):
+                    neighbor.f = (
+                        2 * (node.g + 1)
+                        + heuristics[dir](neighbor_grid)
+                        - heuristics[1 - dir](neighbor_grid)
+                    )
+                    neighbor.g = neighbor_g
+                    open_sets[dir][neighbor] = (neighbor.f, neighbor.g)
+                    neighbor.parent = node
+                    heapq.heappush(queues[dir], neighbor)
+                    nb_nodes += 1
+                    if neighbor in open_sets[1 - dir]:
+                        if neighbor.g + open_sets[1 - dir][neighbor][1] < UB:
+                            UB = neighbor.g + open_sets[1 - dir][neighbor][1]
+                            last_good_node = neighbor
+            F_min[dir] = queues[dir][0].f
+            dir = 1 - dir
+        nodes = [None, None]
+        nodes[1 - dir] = last_good_node
+        for node in open_sets[dir]:
+            if node == last_good_node:
+                if not nodes[dir] or nodes[dir].g > node.g:
+                    nodes[dir] = node
+        for node in closed_sets[dir]:
+            if node == last_good_node:
+                if not nodes[dir] or nodes[dir].g > node.g:
+                    nodes[dir] = node
+        node = nodes[FWD]
+        path = []
+        while node.parent:
+            path.append(node.parent.grid)
+            node = node.parent
+        path.reverse()
+        node = nodes[BWD]
+        while node:
+            path.append(node.grid)
+            node = node.parent
+        path = utils.reconstruct_path(path)
+        if debug:
+            return {"path": path, "nb_nodes": nb_nodes}
+        return path
+
+
+class NoTieBreakAStarSolver(HeuristicSolver):
+    """
+    An implementation of A* with a binary heap and
+    without tie-breaking.
+    """
+
+    def solve(
+        self, grid: Grid, debug=False
+    ) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
+        """
+        Compute an optimal solution by using the A* algorithm.
+        """
+        nb_nodes = 0
+        src = NoTieBreakAStarNode(
+            grid.to_tuple(), None, 0, self.heuristic(grid.to_tuple())
+        )
+        dst = Grid(grid.m, grid.n).to_tuple()
+        all_swaps = Grid.alt_all_swaps(grid.m, grid.n)
+        open_set, closed_set = {src: 0}, set()
+        # closed_set contains the parent from which we discovered the node
+        # open_set contains (distance known, heuristic + distance)
+        #                    (g, f)
+        queue = [src]
+        heapq.heapify(queue)
+        while queue:
+            node = heapq.heappop(queue)
+            closed_set.add(node)
+            if node.grid == dst:
+                path = []
+                while node:
+                    path.append(node.grid)
+                    node = node.parent
+                path.reverse()
+                path = utils.reconstruct_path(path)
+                if debug:
+                    return {"nb_nodes": nb_nodes, "path": path}
+                return path
+            list_grid = list(node.grid)
+            neighbor_g = node.g + 1
+            for swap in all_swaps:
+                utils.alt_make_swap(list_grid, swap)
+                neighbor_grid = tuple(list_grid)
+                neighbor = NoTieBreakAStarNode(neighbor_grid, node, neighbor_g, 0)
+                utils.alt_make_swap(list_grid, swap)
+                if neighbor in closed_set:
+                    continue
+                if open_set.get(neighbor, math.inf) <= neighbor_g:
+                    continue
+                neighbor.h = self.heuristic(neighbor_grid)
+                neighbor.f = neighbor.g + neighbor.h
+                open_set[neighbor] = neighbor_g
+                heapq.heappush(queue, neighbor)
+                nb_nodes += 1
+
+
+class NoTieBreakBucketAStarSolver(HeuristicSolver):
+    """
+    An implementation of A* with a bucket list and without tie breaking.
+    """
+
+    def solve(
+        self, grid: Grid, debug=False
+    ) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
+        """
+        Compute an optimal solution by using the A* algorithm.
+        """
+        nb_nodes = 0
+        src = NoTieBreakAStarNode(
+            grid.to_tuple(), None, 0, self.heuristic(grid.to_tuple())
+        )
+        dst = Grid(grid.m, grid.n).to_tuple()
+        all_swaps = Grid.alt_all_swaps(grid.m, grid.n)
+        open_set, closed_set = {src: 0}, set()
+        # closed_set contains the parent from which we discovered the node
+        # open_set contains (distance known, heuristic + distance)
+        #                    (g, f)
+        queue = OneDimBucketList()
+        queue.add(src)
+        while not queue.empty():
+            node = queue.pop()
+            closed_set.add(node)
+            # open_set.pop(node)
+            if node.grid == dst:
+                path = []
+                while node:
+                    path.append(node.grid)
+                    node = node.parent
+                path.reverse()
+                path = utils.reconstruct_path(path)
+                if debug:
+                    return {"nb_nodes": nb_nodes, "path": path}
+                return path
+            list_grid = list(node.grid)
+            neighbor_g = node.g + 1
+            for swap in all_swaps:
+                utils.alt_make_swap(list_grid, swap)
+                neighbor_grid = tuple(list_grid)
+                neighbor = NoTieBreakAStarNode(neighbor_grid, node, neighbor_g, 0)
+                utils.alt_make_swap(list_grid, swap)
+                if neighbor in closed_set:
+                    continue
+                if neighbor not in open_set or neighbor_g < open_set[neighbor]:
+                    neighbor.h = self.heuristic(neighbor_grid)
+                    neighbor.f = neighbor.g + neighbor.h
+                    open_set[neighbor] = neighbor_g
+                    queue.add(neighbor)
+                    nb_nodes += 1

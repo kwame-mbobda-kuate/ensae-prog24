@@ -1,8 +1,8 @@
+import solver
+import utils
 import grid
 import graphics
-import solver
-import time
-import utils
-import sys
-import apdb
-import gadb
+
+g = utils.difficulty_bounded_grid(4, 4, 0.5, 0.7)
+graphics.game(g, 500, 500)
+print(solver.MDAStarSolver().solve(g))
